@@ -15,9 +15,7 @@ export default function page() {
           </h1>
           <ul className="flex space-x-4 items-center justify-between">
             <li>
-              <Link href={"/login"}>
                 <LoginButton></LoginButton>
-              </Link>
             </li>
             <li>
               <RegisterButton />
@@ -31,9 +29,7 @@ export default function page() {
             Welcome to the Student Management System
           </h1>
           <p className="mt-4 text-lg">
-            <Link href={"/login"}>
               <LoginButton variant={"link"} className="text-xl font-mono " />
-            </Link>
             <Link href={"/home"}>
               <Button variant={"link"} className="text-xl font-mono ">
                 Home

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { ChevronLeftSquareIcon, ChevronRight, ChevronsLeftIcon, MenuIcon, PlusCircle, School, Search, Settings, TableCellsSplitIcon } from 'lucide-react'
+import { ChevronLeftSquareIcon, ChevronRight, ChevronsLeftIcon, LogOut, MenuIcon, PlusCircle, School, Search, Settings, TableCellsSplitIcon } from 'lucide-react'
 import { usePathname } from 'next/navigation';
 import React, { ComponentRef, useEffect, useRef, useState } from 'react'
 import {useMediaQuery} from "usehooks-ts";
@@ -10,6 +10,7 @@ import { Item } from './item';
 import { toast } from 'sonner';
 import { SidebarItem } from './sidebar-item';
 import Link from 'next/link';
+import LoginButton from '@/components/login-button';
 export default function Navigation() {
     const pathname = usePathname();
   // const documents = useQuery(api.documents.get);
@@ -122,14 +123,14 @@ export default function Navigation() {
             <SidebarItem
               label="Classes"
               icon={School}
-              controls={<ChevronRight/>}
+              controls={<ChevronRight />}
             />
           </Link>
         </div>
-        <div className="mt-4">
-          {/* {documents?.map((document) => (
-            <p key={document._id}>{document.title}</p>
-          ))} */}
+        <div
+          className="mt-auto self-end"
+        >
+          <LoginButton variant={"link"} />
         </div>
         <div
           onMouseDown={handleMouseDown}

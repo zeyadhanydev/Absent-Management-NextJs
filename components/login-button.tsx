@@ -1,17 +1,45 @@
 'use client';
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Button } from './ui/button'
+import Link from 'next/link';
+import { LogIn, LogOut } from 'lucide-react';
 
-
-export default function LoginButton({className, variant = 'outline'}: {className?: string, variant?: "outline" | "link" | "default" | "destructive" | "secondary" | "ghost" | null | undefined}) {
-    const isLogin = localStorage?.getItem('token') !== null;
-    console.log(isLogin)
-   const  handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.reload();
-    }
+export default function LoginButton({
+  className,
+  variant = "outline",
+}: {
+  className?: string;
+  variant?:
+    | "outline"
+    | "link"
+    | "default"
+    | "destructive"
+    | "secondary"
+    | "ghost"
+    | null
+    | undefined;
+}) {
+  let isLogin;
+  useEffect(() => {
+    isLogin = localStorage?.getItem("token") !== null;
+  }, [isLogin])
+  
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    window.location.reload();
+  };
   return (
-    <Button onClick={isLogin ? () => handleLogout() : () => {}} className={`text-muted-foreground ${className}`} variant={variant}>{isLogin ? 'Logout' : "Login"}</Button>
-  )
+    <Link href={"/login"}>
+      <Button
+        onClick={isLogin ? () => handleLogout() : () => {}}
+        className={`text-muted-foreground ${className}`}
+        variant={variant}
+      >
+        {isLogin ? <LogOut /> : <LogIn />}
+        {isLogin ? "Logout" : "Login"}
+      </Button>
+    </Link>
+  );
 }

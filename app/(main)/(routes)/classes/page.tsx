@@ -1,118 +1,229 @@
 'use client';
 
 import axios from 'axios';
-import React, { useEffect, useState } from 'react';
-import { ClassCard } from './_components/class-card'; // Adjust path if needed
-import { Spinner } from '@/components/spinner'; // Assuming spinner path
-import { toast } from 'sonner'; // Import toast for error notifications
+import React, { useEffect, useState, useCallback } from 'react';
+import { ClassCard } from './_components/class-card';
+import { CreateClassModal } from './_components/create-class-modal';
+import { DeleteConfirmationModal } from './_components/delete-confirmation-modal'; // Import delete modal
+import { Spinner } from '@/components/spinner';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { PlusCircle } from 'lucide-react';
 
-// Define the Class interface based on expected API data
+// Define the Class interface
 interface ClassData {
   _id: string;
   name: string;
   teacherId: string;
   semester: string;
   status: string;
-  students: any[]; // Keep as any[] or define Student interface if needed elsewhere
+  students: any[];
   createdAt: string;
   updatedAt: string;
   sectionCount: number;
 }
 
-export default function ClassesPage() { // Renamed component for clarity
-  const [classes, setClasses] = useState<ClassData[]>([]); // Typed state
-  const [isLoading, setIsLoading] = useState(true); // Start in loading state
-  const [error, setError] = useState<string | null>(null); // State for error messages
+// Define the User interface
+interface UserData {
+    _id: string;
+    name: string;
+    email: string;
+    role: 'student' | 'admin' | 'instructor';
+}
+
+export default function ClassesPage() {
+  const [classes, setClasses] = useState<ClassData[]>([]);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(true);
+  const [isUserDataLoading, setIsUserDataLoading] = useState(true);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // State for delete confirmation
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [classToDelete, setClassToDelete] = useState<{ id: string; name: string } | null>(null);
+
+  // --- Fetching Logic (mostly unchanged) ---
+  const getAllClasses = useCallback(async (showLoading = true) => {
+    // ... (keep existing getAllClasses logic)
+     if (showLoading) setIsLoadingClasses(true);
+     // setError(null); // Clear previous *page level* errors related to fetching classes
+     try {
+       const token = localStorage.getItem("token");
+       if (!token) {
+         setClasses([]);
+         console.log("No token found for fetching classes.");
+         return;
+       }
+       const response = await axios.get<{ data: ClassData[] }>(
+         "http://localhost:4000/api/class/my-classes",
+         { headers: { Authorization: `Bearer ${token}` } }
+       );
+       setClasses(response.data.data || []);
+     } catch (err: any) {
+       console.error("Failed to fetch classes:", err);
+       let errorMessage = "Failed to load classes.";
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
+            errorMessage = "Your session might have expired. Please log in again.";
+        } else if (axios.isAxiosError(err) && err.response) {
+          errorMessage = err.response.data?.message || `Error ${err.response.status}`;
+        } else if (axios.isAxiosError(err) && err.request) {
+          errorMessage = "Network error fetching classes.";
+        } else if (err instanceof Error) {
+          errorMessage = err.message;
+        }
+       setError(errorMessage); // Set page-level error
+       toast.error(errorMessage);
+       setClasses([]);
+     } finally {
+       if (showLoading) setIsLoadingClasses(false);
+     }
+  }, []);
 
   useEffect(() => {
-    const getAllClasses = async () => {
-      setIsLoading(true); // Set loading true at the start of fetch
-      setError(null); // Clear previous errors
+    const getUserData = async () => {
+    // ... (keep existing getUserData logic)
+      setIsUserDataLoading(true);
       try {
         const token = localStorage.getItem("token");
         if (!token) {
-          throw new Error("Authentication token not found.");
+          setUserData(null);
+          console.log("No token found for fetching user data.");
+          return;
         }
-
-        const response = await axios.get<{ data: ClassData[] }>( // Type the expected response structure
-          "http://localhost:4000/api/class/my-classes",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            // Optional: Add timeout
-            // timeout: 10000, // 10 seconds
-          }
+        const response = await axios.get<{ data: UserData }>(
+          "http://localhost:4000/api/auth/me",
+          { headers: { Authorization: `Bearer ${token}` } }
         );
-
-        console.log('Fetched classes:', response.data.data);
-        setClasses(response.data.data || []); // Ensure it's an array
-      } catch (err: any) { // Catch any error
-        console.error("Failed to fetch classes:", err);
-        let errorMessage = "Failed to load classes. Please try again later.";
-        if (axios.isAxiosError(err)) {
-          if (err.response) {
-            // Backend responded with an error status
-            errorMessage = err.response.data?.message || `Error ${err.response.status}`;
-          } else if (err.request) {
-            // Request was made but no response received
-            errorMessage = "Could not connect to the server. Please check your connection.";
-          } else {
-             // Error setting up the request
-             errorMessage = err.message;
-          }
-        } else if (err instanceof Error) {
-            errorMessage = err.message;
-        }
-        setError(errorMessage);
-        toast.error(errorMessage); // Show error toast
-        setClasses([]); // Clear classes on error
+        setUserData(response.data.data);
+      } catch (err) {
+        console.error("Failed to fetch user data:", err);
+        setUserData(null);
       } finally {
-        setIsLoading(false); // Set loading false after fetch attempt (success or fail)
+        setIsUserDataLoading(false);
       }
     };
-
+    getUserData();
     getAllClasses();
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, [getAllClasses]);
+  // --- End Fetching Logic ---
 
-  // Render loading state
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"> {/* Adjust min-height as needed */}
-        <Spinner size="large" /> {/* Use your Spinner component */}
-      </div>
+  // --- Delete Logic ---
+  const handleDeleteRequest = (classId: string, className: string) => {
+    setClassToDelete({ id: classId, name: className });
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async (classId: string): Promise<void> => {
+    // This function now returns a Promise to handle loading state in the modal
+    const token = localStorage.getItem("token");
+    if (!token) {
+        toast.error("Authentication token not found. Please log in again.");
+        throw new Error("Authentication token not found."); // Throw error to signal failure
+    }
+
+    try {
+      // IMPORTANT: Axios DELETE often sends data in config.data, not as the second arg like POST
+      const response = await axios.delete(
+        `http://localhost:4000/api/class/delete`, // URL might need classId in path depending on API design, but following user spec for body
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          data: { // Send classId in the request body as specified
+            classId: classId,
+          }
+        }
+      );
+
+      if (response.status === 200 || response.status === 204) { // Handle 200 OK or 204 No Content
+        toast.success(`Class "${classToDelete?.name || 'Class'}" deleted successfully!`);
+        await getAllClasses(false); // Refresh the list without main spinner
+        setClassToDelete(null); // Clear the class to delete state
+        // The modal will close itself via onOpenChange on success
+      } else {
+         throw new Error(response.data?.message || `Failed to delete class (Status: ${response.status})`);
+      }
+    } catch (err: any) {
+      console.error("Failed to delete class:", err);
+      let errorMessage = "Failed to delete class. Please try again later.";
+       if (axios.isAxiosError(err) && err.response) {
+         errorMessage = err.response.data?.message || `Error ${err.response.status}`;
+       } else if (err instanceof Error) {
+         errorMessage = err.message;
+       }
+      toast.error(errorMessage);
+      setClassToDelete(null); // Clear state even on error
+      throw err; // Re-throw the error so the modal knows deletion failed
+    }
+  };
+  // --- End Delete Logic ---
+
+
+  const canCreateClass = !isUserDataLoading && userData && (userData.role === 'admin' || userData.role === 'instructor');
+
+  if (isLoadingClasses || isUserDataLoading) {
+    return ( /* ... loading spinner ... */
+        <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
+            <Spinner size="large" />
+        </div>
     );
   }
 
-  // Render error state
-//   if (error) { // You might want a more prominent error display than just toast
-//     return (
-//       <div className="container mx-auto p-6 text-center text-red-600">
-//         <p>Error loading classes: {error}</p>
-//         <Button onClick={getAllClasses} className="mt-4">Retry</Button> {/* Add a retry button */}
-//       </div>
-//     );
-//  }
-
-  // Render content (classes or no classes message)
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8">
-      <h1 className="text-2xl md:text-3xl font-bold mb-6 border-b pb-2">
-        My Classes
-      </h1>
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6 border-b pb-2">
+        <h1 className="text-2xl md:text-3xl font-bold">My Classes</h1>
+        {canCreateClass && (
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" /> New Class
+          </Button>
+        )}
+      </div>
 
-      {classes.length === 0 && !isLoading ? ( // Show message only if not loading and no classes
+      {/* Error Display */}
+      {error && !isLoadingClasses && ( /* ... error display ... */
+         <div className="mb-4 p-4 bg-red-100 text-red-700 border border-red-300 rounded-md">
+            <p>Error: {error}</p>
+         </div>
+      )}
+
+      {/* Content Grid */}
+      {classes.length === 0 && !isLoadingClasses ? ( /* ... no classes message ... */
          <div className="text-center text-muted-foreground mt-10">
-           <p>You are not enrolled in any classes yet.</p>
-           {/* Optional: Add a link or button to find classes */}
+           <p>You are not enrolled in any classes yet, or no classes found.</p>
          </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {classes.map((classItem) => (
-            <ClassCard key={classItem._id} classData={classItem} />
+            <ClassCard
+                key={classItem._id}
+                classData={classItem}
+                userData={userData} // Pass user data down
+                onDelete={handleDeleteRequest} // Pass the delete handler
+                // Optional: onClick for navigation
+                // onClick={() => router.push(`/classes/${classItem._id}`)}
+            />
           ))}
         </div>
       )}
+
+      {/* Modals */}
+      <CreateClassModal
+        isOpen={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        onClassCreated={() => getAllClasses(false)}
+        teacherId={userData?._id ?? null}
+      />
+      <DeleteConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        classId={classToDelete?.id ?? null}
+        className={classToDelete?.name ?? null}
+        onConfirmDelete={handleConfirmDelete} // Pass the actual delete function
+      />
     </div>
   );
 }

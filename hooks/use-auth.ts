@@ -77,6 +77,7 @@ export const logIn = async (email: string, password: string) => {
 
         console.log(userData)
         localStorage.setItem("user", JSON.stringify(userData.data.data.name));
+        localStorage.setItem("role", JSON.stringify(userData.data.data.role));
   
         return true;
       }

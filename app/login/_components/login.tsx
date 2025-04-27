@@ -24,11 +24,14 @@ export default function Login() {
 
   // Check for existing token on mount
   React.useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage?.getItem("token");
+    setTimeout(() => {
     if (token) {
       // Redirect to home if already logged in
       router.replace("/"); // Use replace to avoid adding login to history
     }
+    }
+    , 2000); // Optional delay for user feedback
   }, [router]); // Dependency on the router
 
   const handleSubmit = async (event: React.FormEvent) => {
