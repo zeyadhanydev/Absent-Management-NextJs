@@ -63,7 +63,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
       }
       console.log(name, semester, teacherId);
       const response = await axios.post(
-        "http://localhost:4000/api/class/create",
+        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/class/create`,
         {
           name,
           semester,

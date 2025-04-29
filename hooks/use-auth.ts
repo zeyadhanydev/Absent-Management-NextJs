@@ -1,7 +1,8 @@
 import axios from "axios";
+import { toast } from "sonner";
 
 export const useAuth = async () => {
-  const response = await axios.get("http://localhost:4000//api/auth/me");
+  const response = await axios.get(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/me`);
   if (response.status === 200) {
     // add barear token to local storage
     localStorage.setItem("token", response.data.token);
@@ -22,7 +23,7 @@ export const registerToAccount = async (
 ) => {
   let res;
   if (role === "admin" || role === "instructor") {
-    res = await axios.post("http://localhost:4000/api/auth/register", {
+    res = await axios.post(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/register`, {
       email,
       password,
       name,
@@ -35,7 +36,7 @@ export const registerToAccount = async (
     }
   }
   if (role === "student") {
-    res = await axios.post("http://localhost:4000/api/auth/register", {
+    res = await axios.post(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/register`, {
       email,
       password,
       name,
@@ -54,7 +55,7 @@ export const registerToAccount = async (
 
 export const logIn = async (email: string, password: string) => {
     try {
-      const response = await axios.post("http://localhost:4000/api/auth/login", {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/login`, {
         email,
         password,
       }, {
@@ -67,7 +68,7 @@ export const logIn = async (email: string, password: string) => {
       if (response.status === 200) {
         // Store the token and user details in localStorage
         localStorage.setItem("token", response.data.token);
-        const userData = await axios.get('http://localhost:4000/api/auth/me' ,
+        const userData = await axios.get(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/me` ,
           {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -84,10 +85,10 @@ export const logIn = async (email: string, password: string) => {
     } catch (error: any) {
       console.log(error)
       if (error.response?.status === 401) {
-        alert("Invalid email or password");
+        toast.error("Invalid email or password");
       } else {
-        console.error("Login failed:", error.message);
-        alert("An error occurred. Please try again later.");
+        console.log("Login failed:", error.message);
+        toast.error("Invalid Email or Password.")
       }
     }
   
@@ -101,7 +102,7 @@ export const useLogout = async () => {
 
 export const useUpdatePassword = async (currentPassword: string, newPassword: string) => {
   const response = await axios.post(
-    "http://localhost:4000/api/auth/update-password",
+    `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/update-password`,
     {
       currentPassword,
       newPassword,

@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Link from "next/link"; // Import Link for client-side navigation
 import { toast } from "sonner";
 
 export default function Login() {
@@ -28,7 +27,7 @@ export default function Login() {
     setTimeout(() => {
     if (token) {
       // Redirect to home if already logged in
-      router.replace("/"); // Use replace to avoid adding login to history
+      router.replace("/classes"); // Use replace to avoid adding login to history
     }
     }
     , 2000); // Optional delay for user feedback
@@ -41,20 +40,12 @@ export default function Login() {
       if (res) {
         toast.success("Login successful");
         setTimeout(() => {
-        router.push("/"); // Navigate to home on successful login
+        router.push("/classes"); // Navigate to home on successful login
         }
-        , 2000); // Optional delay for user feedback
-      } else {
-        // Handle login failure (e.g., show an error message)
-        // For now, redirecting to register as per original logic
-        // Consider adding error handling feedback to the user
-        router.push("/register");
-      }
+        , 2000);
+      } 
     } catch (error) {
-      console.error("Login failed:", error);
-      // Optionally: Show an error message to the user
-      // e.g., setErrorState("Invalid email or password");
-      router.push("/register"); // Fallback as per original logic
+      console.log("Login failed:", error);
     }
   };
 
@@ -68,7 +59,6 @@ export default function Login() {
           </CardDescription>
         </CardHeader>
         {/* Use a form element for better semantics and accessibility */}
-        <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -94,18 +84,17 @@ export default function Login() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full mt-6" > {/* Add type="submit" */}
+            <Button onClick={handleSubmit} className="w-full mt-6" > {/* Add type="submit" */}
               Login
             </Button>
-            <p className="text-sm text-muted-foreground">
+            {/* <p className="text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
               {/* Use Next.js Link for client-side routing */}
-              <Link href="/register" className="font-medium text-primary underline underline-offset-4 hover:text-primary/90">
+              {/* <Link href="/register" className="font-medium text-primary underline underline-offset-4 hover:text-primary/90">
                 Register
-              </Link>
-            </p>
+              </Link> */}
+            {/* </p> */}
           </CardFooter>
-        </form>
       </Card>
     </div>
   );

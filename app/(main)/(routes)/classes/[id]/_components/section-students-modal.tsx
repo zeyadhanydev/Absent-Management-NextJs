@@ -91,7 +91,7 @@ export default function SectionStudentsModal({
         return;
       }
       
-      const response = await axios.get('http://localhost:4000/api/auth/students', {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/students`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -122,7 +122,7 @@ export default function SectionStudentsModal({
       }
       
       await axios.post(
-        'http://localhost:4000/api/attendance/section/add-students',
+        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/sections/add-students`,
         {
           sectionId: section._id,
           studentIds: [selectedStudentId]
@@ -146,7 +146,7 @@ export default function SectionStudentsModal({
       toast.success('Student added to section');
     } catch (error) {
       console.error('Failed to add student to section', error);
-      toast.error('Failed to add student to section');
+      toast.error(`Failed to add student to section: ${error}`);
     } finally {
       setIsUpdating(false);
     }
@@ -161,13 +161,12 @@ export default function SectionStudentsModal({
         return;
       }
       
-      await axios.post(
-        'http://localhost:4000/api/attendance/section/remove-students',
-        {
+      await axios.delete(
+        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/sections/remove-students`,
+        { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json"} , data:  {
           sectionId: section._id,
           studentIds: [studentId]
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        }} 
       );
       
       // Remove from section students

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { ChevronLeftSquareIcon, ChevronRight, ChevronsLeftIcon, LogOut, MenuIcon, PlusCircle, School, Search, Settings, TableCellsSplitIcon } from 'lucide-react'
+import { ChevronLeftSquareIcon, ChevronRight, ChevronsLeftIcon, LogOut, MenuIcon, PlusCircle, Scan, School, Search, Settings, TableCellsSplitIcon } from 'lucide-react'
 import { usePathname } from 'next/navigation';
 import React, { ComponentRef, useEffect, useRef, useState } from 'react'
 import {useMediaQuery} from "usehooks-ts";
@@ -90,7 +90,28 @@ export default function Navigation() {
     setTimeout(() => setIsResetting(false), 300);
   }
  }
-
+ // Use state instead of ref for reactivity
+ const [role, setRole] = useState<string | null>(null);
+  
+ // Check login status on mount and when component updates
+ useEffect(() => {
+   // Safe check for localStorage (for SSR)
+   if (typeof window !== 'undefined') {
+     setRole(localStorage.getItem("role"));
+   }
+   
+   // Optional: Set up event listener to detect changes from other components
+   const handleStorageChange = () => {
+    setRole(localStorage.getItem("role"));
+   
+   };
+ 
+   window.addEventListener('storage', handleStorageChange);
+   return () => window.removeEventListener('storage', handleStorageChange);
+ }, [role, localStorage.getItem('role')]);
+      if (!role) {
+        return <div></div>
+      }
   return (
     <>
       <aside
@@ -119,17 +140,20 @@ export default function Navigation() {
           </div>
           <Item isSearch label="Search" icon={Search} onClick={() => {}} />
           <Item label="Settings" icon={Settings} onClick={() => {}} />
-          <Link href="classes">
-            <SidebarItem
-              label="Classes"
-              icon={School}
-              controls={<ChevronRight />}
-            />
-          </Link>
+            <Link href="/classes">
+              <SidebarItem
+                label="Classes"
+                icon={School}
+              />
+            </Link> 
+            <Link href="/scan">
+              <SidebarItem
+                label="Scan QR Code"
+                icon={Scan}
+              />
+            </Link>
         </div>
-        <div
-          className="mt-auto self-end"
-        >
+        <div className="mt-auto self-end">
           <LoginButton variant={"link"} />
         </div>
         <div

@@ -19,6 +19,7 @@
     "@radix-ui/react-separator": "^1.1.4",
     "@radix-ui/react-slot": "^1.2.0",
     "@syncfusion/ej2-react-grids": "^29.1.39",
+    "@tanstack/react-table": "^8.21.3",
     "@uidotdev/usehooks": "^2.4.1",
     "axios": "^1.9.0",
     "class-variance-authority": "^0.7.1",
@@ -30,6 +31,7 @@
     "next-themes": "^0.4.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-qr-reader": "3.0.0-beta-1",
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.2.0",
     "usehooks-ts": "^3.1.1"

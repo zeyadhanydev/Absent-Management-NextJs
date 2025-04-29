@@ -57,7 +57,7 @@ export default function Register() {
 
     console.log('userData', userData);
     try {
-      const response = await axios.post("http://localhost:4000/api/auth/register", {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/register`, {
         ...userData,
       },
         {

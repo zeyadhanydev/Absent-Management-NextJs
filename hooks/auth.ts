@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:4000";
+const API_BASE_URL = process.env.API_BASE_URL || `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}`;
 
 export const logIn = async (email: string, password: string) => {
   if (!email || !password) {

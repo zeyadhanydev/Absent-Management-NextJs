@@ -56,7 +56,7 @@ export default function ClassesPage() {
          return;
        }
        const response = await axios.get<{ data: ClassData[] }>(
-         "http://localhost:4000/api/class/my-classes",
+         `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/class/my-classes`,
          { headers: { Authorization: `Bearer ${token}` } }
        );
        setClasses(response.data.data || []);
@@ -92,7 +92,7 @@ export default function ClassesPage() {
           return;
         }
         const response = await axios.get<{ data: UserData }>(
-          "http://localhost:4000/api/auth/me",
+          `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/me`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setUserData(response.data.data);
@@ -125,7 +125,7 @@ export default function ClassesPage() {
     try {
       // IMPORTANT: Axios DELETE often sends data in config.data, not as the second arg like POST
       const response = await axios.delete(
-        `http://localhost:4000/api/class/delete`, // URL might need classId in path depending on API design, but following user spec for body
+        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/class/delete`, // URL might need classId in path depending on API design, but following user spec for body
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -166,7 +166,7 @@ export default function ClassesPage() {
   if (isLoadingClasses || isUserDataLoading) {
     return ( /* ... loading spinner ... */
         <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
-            <Spinner size="large" />
+            <Spinner size="lg" />
         </div>
     );
   }

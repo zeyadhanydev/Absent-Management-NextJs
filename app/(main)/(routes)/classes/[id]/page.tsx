@@ -15,8 +15,9 @@ import Link from 'next/link';
 import StudentsGrid from './_components/students-grid';
 import AddStudentForm from './_components/add-student-form';
 import SectionCard from './_components/section-card';
-import CreateSectionModal from './_components/create-section-modal';
+import {CreateSectionModal} from './_components/create-section-modal';
 import { Separator } from '@/components/ui/separator';
+import { useRouter } from 'next/navigation';
 
 // Define interfaces
 interface Student {
@@ -61,11 +62,10 @@ export default function ClassDetailPage() {
   const [classData, setClassData] = useState<ClassData | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [userData, setUserData] = useState<UserData | null>(null);
-  
   const [isLoadingClass, setIsLoadingClass] = useState(true);
   const [isLoadingSections, setIsLoadingSections] = useState(true);
   const [isCreatingSectionModalOpen, setIsCreatingSectionModalOpen] = useState(false);
-  console.log(sections)
+  
   // Permissions check
   const canManage = userData && (userData.role === 'admin' || (userData.role === 'instructor' && classData?.teacherId === userData._id));
 
@@ -75,7 +75,7 @@ export default function ClassDetailPage() {
       const token = localStorage.getItem('token');
       if (!token) return;
       
-      const response = await axios.get('http://localhost:4000/api/auth/me', {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -95,10 +95,10 @@ export default function ClassDetailPage() {
         return;
       }
       
-      const response = await axios.get('http://localhost:4000/api/class/my-classes', {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/class/my-classes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       const currentClass = response.data.data.find((c: ClassData) => c._id === classId);
       if (currentClass) {
         setClassData(currentClass);
@@ -119,14 +119,19 @@ export default function ClassDetailPage() {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      console.log(token)
-      // Change to GET request with query parameter
+      
       const response = await axios.get(
-        `http://localhost:4000/api/sections/my-sections`,
+        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/sections/my-sections`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+            
+      console.log(response.data);  
+      // Filter sections by the current classId
+      const filteredSections = response.data.data.filter((section: Section) => 
+        section.classId === classId
+      );
       
-      setSections(response.data.data || []);
+      setSections(filteredSections || []);
     } catch (error) {
       console.error('Failed to fetch sections', error);
       toast.error('Failed to load class sections');
@@ -145,7 +150,7 @@ export default function ClassDetailPage() {
       }
       
       await axios.post(
-        'http://localhost:4000/api/class/add-students',
+        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/class/add-students`,
         {
           classId,
           studentIds
@@ -170,14 +175,17 @@ export default function ClassDetailPage() {
         return;
       }
       
-      await axios.post(
-        'http://localhost:4000/api/class/remove-students',
-        {
-          classId,
-          studentIds: [studentId]
+      await axios.delete(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/class/remove-students`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+
+        data: {
+          classId,
+          studentIds: [studentId],
+        },
+      });
       
       toast.success('Student removed successfully');
       fetchClassData(); // Refresh class data
@@ -186,8 +194,6 @@ export default function ClassDetailPage() {
       toast.error('Failed to remove student from class');
     }
   };
-
-  // Create a section
   const handleCreateSection = async (sectionNumber: number, dayNumber: number) => {
     try {
       const token = localStorage.getItem('token');
@@ -195,26 +201,44 @@ export default function ClassDetailPage() {
         toast.error('Authentication token not found');
         return;
       }
-      
+  
+      // Ensure classId is available in this scope.
+      // If handleCreateSection is defined in the parent component,
+      // classId should be accessible from props or state.
+      if (!classId) {
+          toast.error('Class ID is missing.');
+          console.error('handleCreateSection called without a valid classId.');
+          return;
+      }
+  
+      console.log('Creating section with:', { classId, sectionNumber, dayNumber }); // Log data being sent
+  
       await axios.post(
-        'http://localhost:4000/api/attendance/section/create',
+        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/sections/create`,
         {
-          classId,
+          classId, // Make sure this variable holds the correct class ID
           sectionNumber,
           dayNumber
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+  
       toast.success('Section created successfully');
-      fetchSections(); // Refresh sections
-      fetchClassData(); // Update section count
+      fetchSections(); // Refresh sections list - ensure this function is in scope
+      fetchClassData(); // Update class data (e.g., section count) - ensure this function is in scope
     } catch (error) {
       console.error('Failed to create section', error);
-      toast.error('Failed to create section');
+      // Log more specific error details if available (e.g., from Axios response)
+      let errorMessage = 'Failed to create section';
+      if (axios.isAxiosError(error) && error.response) {
+        errorMessage = `Failed to create section: ${error.response.data?.message || error.message}`;
+      } else if (error instanceof Error) {
+          errorMessage = `Failed to create section: ${error.message}`;
+      }
+      toast.error(errorMessage);
     }
   };
-
+  
   // Delete a section
   const handleDeleteSection = async (sectionId: string) => {
     try {
@@ -224,10 +248,19 @@ export default function ClassDetailPage() {
         return;
       }
       
-      await axios.post(
-        'http://localhost:4000/api/sections/delete',
-        { sectionId },
-        { headers: { Authorization: `Bearer ${token}` } }
+      console.log(sectionId)
+      console.log(token)
+      await axios.delete(
+        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/sections/delete`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          data: {
+            sectionId: sectionId
+          }
+        }
       );
       
       toast.success('Section deleted successfully');
@@ -250,7 +283,7 @@ export default function ClassDetailPage() {
   if (isLoadingClass) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
-        <Spinner size="large" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -302,7 +335,7 @@ export default function ClassDetailPage() {
             <p className="text-3xl font-bold">{classData.students.length}</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Total Sections</CardTitle>
@@ -312,14 +345,17 @@ export default function ClassDetailPage() {
             <p className="text-3xl font-bold">{classData.sectionCount}</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Status</CardTitle>
             <CardDescription>Current class status</CardDescription>
           </CardHeader>
           <CardContent>
-            <Badge variant={classData.status === 'active' ? 'default' : 'secondary'} className="text-sm capitalize">
+            <Badge
+              variant={classData.status === "active" ? "default" : "secondary"}
+              className="text-sm capitalize"
+            >
               {classData.status}
             </Badge>
           </CardContent>
@@ -329,29 +365,33 @@ export default function ClassDetailPage() {
       {/* Sections */}
       <div className="mb-10">
         <h2 className="text-xl font-semibold mb-4">Sections</h2>
-        
+
         {isLoadingSections ? (
           <div className="flex justify-center py-8">
-            <Spinner size="medium" />
+            <Spinner size="lg" />
           </div>
         ) : sections.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sections.map(section => (
-              <SectionCard 
+            {sections.map((section) => (
+
+              <SectionCard
                 key={section._id}
                 section={section}
                 classId={classId}
                 canManage={!!canManage}
+               
                 onDelete={handleDeleteSection}
               />
             ))}
           </div>
         ) : (
           <div className="text-center py-10 bg-muted/20 rounded-lg">
-            <p className="text-muted-foreground">No sections have been created yet.</p>
+            <p className="text-muted-foreground">
+              No sections have been created yet.
+            </p>
             {canManage && (
-              <Button 
-                className="mt-4" 
+              <Button
+                className="mt-4"
                 onClick={() => setIsCreatingSectionModalOpen(true)}
                 variant="outline"
               >
@@ -367,29 +407,30 @@ export default function ClassDetailPage() {
       {/* Students Section */}
       <div className="mb-6">
         <h2 className="text-xl font-semibold mb-4">Students</h2>
-        
+
         {/* Add Student Form - only visible to instructors/admins who can manage */}
         {canManage && (
-          <AddStudentForm 
-            classData={classData} 
-            onAddStudent={handleAddStudent} 
+          <AddStudentForm
+            classData={classData}
+            onAddStudent={handleAddStudent}
           />
         )}
-        
+
         {/* Students Grid */}
-        <StudentsGrid 
-          students={classData.students} 
-          canManage={!!canManage} 
+        <StudentsGrid
+          students={classData.students}
+          canManage={!!canManage}
           onRemoveStudent={handleRemoveStudent}
         />
       </div>
-      
+
       {/* Modals */}
       <CreateSectionModal
         isOpen={isCreatingSectionModalOpen}
         onOpenChange={setIsCreatingSectionModalOpen}
+        // Ensure CreateSectionModal calls this function with the correct arguments
         onCreateSection={handleCreateSection}
-        existingSections={sections}
+        existingSections={sections} // Pass existing sections if needed for validation inside the modal
       />
     </div>
   );

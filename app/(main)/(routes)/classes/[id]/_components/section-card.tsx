@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Users, Calendar, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import SectionStudentsModal from './section-students-modal';
+import DeleteSectionDialog from './delete-section-dialog';
+import { useRouter } from 'next/navigation';
 
 interface Student {
   _id: string;
@@ -31,17 +33,15 @@ interface SectionCardProps {
 export default function SectionCard({ section, classId, canManage, onDelete }: SectionCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isStudentsModalOpen, setIsStudentsModalOpen] = useState(false);
-
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+const router = useRouter()
   const handleDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete Section ${section.sectionNumber}?`)) {
-      return;
-    }
-    
     setIsDeleting(true);
     try {
       await onDelete(section._id);
     } finally {
       setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -61,7 +61,7 @@ export default function SectionCard({ section, classId, canManage, onDelete }: S
 
   return (
     <>
-      <Card className="h-full flex flex-col hover:shadow-md transition-shadow duration-200">
+      <Card className="h-full flex flex-col hover:shadow-md transition-shadow duration-200" >
         <CardHeader>
           <CardTitle className="flex justify-between items-center">
             <span>Section {section.sectionNumber}</span>
@@ -70,14 +70,9 @@ export default function SectionCard({ section, classId, canManage, onDelete }: S
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 text-destructive" 
-                onClick={handleDelete}
-                disabled={isDeleting}
+                onClick={() => setIsDeleteDialogOpen(true)}
               >
-                {isDeleting ? (
-                  <div className="h-4 w-4 border-2 border-t-transparent animate-spin rounded-full" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
+                <Trash2 className="h-4 w-4" />
               </Button>
             )}
           </CardTitle>
@@ -99,13 +94,20 @@ export default function SectionCard({ section, classId, canManage, onDelete }: S
           </div>
         </CardContent>
         
-        <CardFooter className="pt-0">
+        <CardFooter className="pt-0 flex items-center flex-col space-y-2">
           <Button 
             variant="outline" 
-            className="w-full" 
+            className="" 
             onClick={() => setIsStudentsModalOpen(true)}
           >
-            <PlusCircle className="mr-2 h-4 w-4" /> {canManage ? "Manage Students" : "View Students"}
+            <PlusCircle className="mr-2 h-4 w-4" /> {canManage ? "Edit Students" : "View Students"}
+          </Button>
+          <Button
+           onClick={() => router.push(`/classes/${classId}/section/${section._id}`)}
+            variant="outline"
+            className=""
+          >
+            <Users className="mr-2 h-4 w-4" /> {canManage ? "Manage Section" : "View Section"}
           </Button>
         </CardFooter>
       </Card>
@@ -117,6 +119,15 @@ export default function SectionCard({ section, classId, canManage, onDelete }: S
         section={section}
         classId={classId}
         canManage={canManage}
+      />
+
+      {/* Delete section confirmation dialog */}
+      <DeleteSectionDialog
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={handleDelete}
+        sectionNumber={section.sectionNumber}
+        isDeleting={isDeleting}
       />
     </>
   );

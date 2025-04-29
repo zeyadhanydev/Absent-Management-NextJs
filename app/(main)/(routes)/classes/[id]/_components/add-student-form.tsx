@@ -44,7 +44,7 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
   const [open, setOpen] = useState(false);
-
+console.log(selectedStudents)
   // Get list of available students
   useEffect(() => {
     const fetchStudents = async () => {
@@ -53,7 +53,7 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
         const token = localStorage.getItem("token");
         if (!token) return;
         
-        const response = await axios.get("http://localhost:4000/api/auth/students", {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/students`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -76,22 +76,24 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
   }, [classData.students]);
 
   // Handle student selection
-  const toggleStudentSelection = (studentId: string) => {
-    setSelectedStudentIds(current => {
-      if (current.includes(studentId)) {
-        // Remove student
-        setSelectedStudents(current => current.filter(student => student._id !== studentId));
-        return current.filter(id => id !== studentId);
-      } else {
-        // Add student
-        const studentToAdd = allStudents.find(student => student._id === studentId);
-        if (studentToAdd) {
-          setSelectedStudents(current => [...current, studentToAdd]);
-        }
-        return [...current, studentId];
-      }
-    });
-  };
+// Handle student selection
+const toggleStudentSelection = (studentId: string) => {
+  // Check if student is already selected
+  const isAlreadySelected = selectedStudentIds.includes(studentId);
+  
+  if (isAlreadySelected) {
+    // Remove student - update both states separately
+    setSelectedStudentIds(current => current.filter(id => id !== studentId));
+    setSelectedStudents(current => current.filter(student => student._id !== studentId));
+  } else {
+    // Add student - update both states separately
+    const studentToAdd = allStudents.find(student => student._id === studentId);
+    if (studentToAdd) {
+      setSelectedStudentIds(current => [...current, studentId]);
+      setSelectedStudents(current => [...current, studentToAdd]);
+    }
+  }
+};
 
   // Remove a selected student
   const removeSelectedStudent = (studentId: string) => {
@@ -196,10 +198,9 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
                   {student.name}
                   <button 
                     onClick={() => removeSelectedStudent(student._id)}
-                    className="ml-1 rounded-full hover:bg-muted p-0.5"
+                    className="ml-1 rounded-full hover:bg-muted p-0.5 hover:text-red-400"
                   >
                     <X className="h-3 w-3" />
-                    <span className="sr-only">Remove {student.name}</span>
                   </button>
                 </Badge>
               ))}
