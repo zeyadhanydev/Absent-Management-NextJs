@@ -108,7 +108,7 @@ export default function Navigation() {
  
    window.addEventListener('storage', handleStorageChange);
    return () => window.removeEventListener('storage', handleStorageChange);
- }, [role, localStorage.getItem('role')]);
+ }, [role, ]);
       if (!role) {
         return <div></div>
       }

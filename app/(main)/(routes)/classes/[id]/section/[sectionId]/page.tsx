@@ -397,8 +397,8 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
         if (!token) throw new Error('Authentication token not found');
 
         const payload = {
-            classId: sectionData.classId,
-            sectionId: sectionData._id,
+            classId: classId,
+            sectionId: sectionId,
             sectionNumber: sectionData.sectionNumber,
             dayNumber: sectionData.dayNumber,
             location: {
