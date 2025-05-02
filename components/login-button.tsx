@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import Link from 'next/link';
 import { LogIn, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export default function LoginButton({
   className,
@@ -47,6 +48,7 @@ const router =   useRouter();
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       localStorage.removeItem("role");
+      toast.success("Logged out successfully");
       setIsLoggedIn(false);
       router.push("/"); // Redirect to login page after logout
     }

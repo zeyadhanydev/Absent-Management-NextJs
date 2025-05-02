@@ -12,12 +12,31 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList
 } from "@/components/ui/command";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  RadioGroup,
+  RadioGroupItem
+} from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, ChevronsUpDown, Trash2, Loader2, QrCode, MapPin, ChevronLeft, PowerOff, X, Edit, Save, RotateCcw } from "lucide-react";
+import { Check, ChevronsUpDown, Trash2, Loader2, QrCode, MapPin, ChevronLeft, PowerOff, X, Edit, Save, RotateCcw, Plus, UserCheck, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/spinner";
 import QrCodeDialog from './_components/QrCodeDialog';
@@ -40,6 +59,18 @@ interface Section {
   className?: string;
 }
 
+interface ClassData {
+  _id: string;
+  name: string;
+  teacherId: string;
+  semester: string;
+  status: string;
+  students: Student[];
+  sectionCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface UserData {
   _id: string;
   name: string;
@@ -57,6 +88,9 @@ interface QrCodeData {
     codeId: string;
 }
 
+// Attendance status type
+type AttendanceStatus = 'present' | 'late' | 'absent';
+
 // --- LocalStorage Key ---
 const MANUAL_LOCATION_STORAGE_KEY = 'manualAttendanceLocation';
 
@@ -69,13 +103,14 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
 
   // --- State ---
   const [sectionData, setSectionData] = useState<Section | null>(null);
-  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [classData, setClassData] = useState<ClassData | null>(null);
   const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
 
   // Loading States
   const [isLoadingSection, setIsLoadingSection] = useState(true);
+  const [isLoadingClass, setIsLoadingClass] = useState(true);
   const [isLoadingAvailableStudents, setIsLoadingAvailableStudents] = useState(true);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isAddingStudents, setIsAddingStudents] = useState(false);
@@ -89,11 +124,18 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [qrCodeDetails, setQrCodeDetails] = useState<QrCodeData | null>(null);
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
+  
   // Manual Location State
   const [showManualLocationInput, setShowManualLocationInput] = useState(false);
   const [manualLatitude, setManualLatitude] = useState('');
   const [manualLongitude, setManualLongitude] = useState('');
   const [storedManualLocation, setStoredManualLocation] = useState<LocationCoords | null>(null);
+
+  // Manual Attendance States
+  const [isManualAttendanceDialogOpen, setIsManualAttendanceDialogOpen] = useState(false);
+  const [selectedStudentForAttendance, setSelectedStudentForAttendance] = useState<string>('');
+  const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus>('present');
+  const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
 
   // Permissions
   const canManage = userData?.role === 'admin' || userData?.role === 'instructor';
@@ -118,7 +160,6 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
             const parsedLocation = JSON.parse(storedLocationString);
             if (typeof parsedLocation.latitude === 'number' && typeof parsedLocation.longitude === 'number') {
                  setStoredManualLocation(parsedLocation);
-                 console.log("Loaded manual location from storage:", parsedLocation);
             } else {
                  console.warn("Invalid manual location data found in storage. Clearing.");
                  localStorage.removeItem(MANUAL_LOCATION_STORAGE_KEY);
@@ -126,7 +167,6 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
         }
     } catch (error) {
         console.error("Failed to load or parse manual location from localStorage", error);
-        localStorage.removeItem(MANUAL_LOCATION_STORAGE_KEY);
     }
   }, []);
 
@@ -140,8 +180,7 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
           setIsLoadingUser(false);
           return;
       };
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}`;
-      const response = await axios.get(`${apiUrl}/api/auth/me`, {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUserData(response.data.data);
@@ -152,6 +191,44 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
       setIsLoadingUser(false);
     }
   }, []);
+
+  // Fetch class data - added this new function to get class students
+  const fetchClassData = useCallback(async () => {
+    if (!classId) {
+      console.warn("Class ID parameter is missing.");
+      setIsLoadingClass(false);
+      return;
+    }
+    
+    setIsLoadingClass(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error("Authentication token not found.");
+        setIsLoadingClass(false);
+        return;
+      }
+      
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/my-classes`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const currentClass = response.data.data.find((c: ClassData) => c._id === classId);
+      if (currentClass) {
+        setClassData(currentClass);
+      } else {
+        console.error(`Class with ID ${classId} not found in user's classes.`);
+        toast.error('Class details not found or access denied.');
+        setClassData(null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch class data', error);
+      toast.error('Failed to load class details.');
+      setClassData(null);
+    } finally {
+      setIsLoadingClass(false);
+    }
+  }, [classId]);
 
   const fetchSectionData = useCallback(async () => {
     if (!sectionId) {
@@ -170,8 +247,7 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
         return;
       }
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL ||`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}`;
-      const response = await axios.get(`${apiUrl}/api/sections/my-sections`,
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/sections/my-sections`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -195,52 +271,55 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
     }
   }, [sectionId]);
 
-  const fetchAvailableStudents = useCallback(async () => {
+  // Updated function to filter students correctly
+  const filterAvailableStudents = useCallback(() => {
     setIsLoadingAvailableStudents(true);
+    
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-          toast.error("Authentication token not found for fetching students.");
-          setIsLoadingAvailableStudents(false);
-          return;
-      };
-
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL ||`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}`;
-      const response = await axios.get(`${apiUrl}/api/auth/students`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const allSystemStudents: Student[] = response.data.data || [];
-      setAllStudents(allSystemStudents);
-
-      if (sectionData) {
-          const sectionStudentIds = new Set(sectionData.students?.map(s => s._id) || []);
-          const available = allSystemStudents.filter(s => !sectionStudentIds.has(s._id));
-          setAvailableStudents(available.sort((a, b) => a.name.localeCompare(b.name)));
-      } else {
-          setAvailableStudents(allSystemStudents.sort((a, b) => a.name.localeCompare(b.name)));
+      // Make sure we have both class and section data
+      if (!classData || !classData.students || !sectionData) {
+        console.warn("Missing class or section data needed for student filtering");
+        setAvailableStudents([]);
+        return;
       }
-
+      
+      // Get students from section for filtering
+      const sectionStudentIds = new Set(sectionData.students?.map(s => s._id) || []);
+      
+      // Filter to only include students who are in the class but not in this section
+      const filteredStudents = classData.students.filter(
+        student => !sectionStudentIds.has(student._id)
+      );
+      
+      // Sort by name for better user experience
+      const sortedStudents = [...filteredStudents].sort((a, b) => 
+        a.name.localeCompare(b.name)
+      );
+      
+      setAvailableStudents(sortedStudents);
+      
     } catch (error) {
-      console.error('Failed to fetch students', error);
-      toast.error('Failed to load available students list.');
+      console.error('Failed to filter students', error);
+      toast.error('Failed to prepare student list.');
       setAvailableStudents([]);
     } finally {
       setIsLoadingAvailableStudents(false);
     }
-  }, [sectionData]);
+  }, [classData, sectionData]);
 
   // --- Effects ---
   useEffect(() => {
     fetchUserData();
+    fetchClassData();
     fetchSectionData();
-  }, [fetchUserData, fetchSectionData]);
+  }, [fetchUserData, fetchClassData, fetchSectionData]);
 
+  // Update available students whenever class or section data changes
   useEffect(() => {
-    if (sectionData) {
-      fetchAvailableStudents();
+    if (classData && sectionData) {
+      filterAvailableStudents();
     }
-  }, [sectionData, fetchAvailableStudents]);
+  }, [classData, sectionData, filterAvailableStudents]);
 
   // --- Student Management Handlers ---
   const handleAddStudents = async () => {
@@ -252,23 +331,33 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
       const token = localStorage.getItem('token');
       if (!token) throw new Error('Authentication token not found');
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}`;
-      await axios.post(`${apiUrl}/api/sections/add-students`,
+      await axios.post(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/sections/add-students`,
         { sectionId: sectionData._id, studentIds: studentIdsArray },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const addedStudents = allStudents.filter(s => selectedStudentIds.has(s._id));
-      setSectionData(prev => prev ? { ...prev, students: [...prev.students, ...addedStudents].sort((a,b) => a.name.localeCompare(b.name)) } : null);
+      // Find the added students from classData.students
+      const addedStudents = classData?.students.filter(s => selectedStudentIds.has(s._id)) || [];
+      
+      // Update section data with newly added students
+      setSectionData(prev => prev ? { 
+        ...prev, 
+        students: [...prev.students, ...addedStudents].sort((a,b) => a.name.localeCompare(b.name)) 
+      } : null);
+      
+      // Remove added students from available list
       setAvailableStudents(prev => prev.filter(s => !selectedStudentIds.has(s._id)));
+      
+      // Reset selection
       setSelectedStudentIds(new Set());
       setPopoverOpen(false);
-      toast.success(`${studentIdsArray.length} student(s) added.`);
+      
+      toast.success(`${studentIdsArray.length} student(s) added to section.`);
 
     } catch (error) {
-        console.error('Failed to add students', error);
-        const message = error instanceof AxiosError ? error.response?.data?.message || error.message : (error as Error).message;
-        toast.error(`Failed to add students: ${message}`);
+      console.error('Failed to add students', error);
+      const message = error instanceof AxiosError ? error.response?.data?.message || error.message : (error as Error).message;
+      toast.error(`Failed to add students: ${message}`);
     } finally {
       setIsAddingStudents(false);
     }
@@ -282,20 +371,30 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
       const token = localStorage.getItem('token');
       if (!token) throw new Error('Authentication token not found');
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}`;
-      await axios.delete(`${apiUrl}/api/sections/remove-students`,
+      await axios.delete(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/sections/remove-students`,
         {
             headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
             data: { sectionId: sectionData._id, studentIds: [studentIdToRemove] }
         }
       );
 
+      // Find the removed student from current section data
       const removedStudent = sectionData.students.find(s => s._id === studentIdToRemove);
-      setSectionData(prev => prev ? { ...prev, students: prev.students.filter(s => s._id !== studentIdToRemove) } : null);
-      if (removedStudent && allStudents.some(s => s._id === removedStudent._id)) {
-            setAvailableStudents(prev => [...prev, removedStudent].sort((a, b) => a.name.localeCompare(b.name)));
+      
+      // Update section data removing this student
+      setSectionData(prev => prev ? { 
+        ...prev, 
+        students: prev.students.filter(s => s._id !== studentIdToRemove) 
+      } : null);
+      
+      // Add the student back to available students if they're still in class
+      if (removedStudent && classData?.students.some(s => s._id === removedStudent._id)) {
+        setAvailableStudents(prev => 
+          [...prev, removedStudent].sort((a, b) => a.name.localeCompare(b.name))
+        );
       }
-      toast.success('Student removed.');
+      
+      toast.success('Student removed from section.');
 
     } catch (error) {
         console.error('Failed to remove student', error);
@@ -303,6 +402,44 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
         toast.error(`Failed to remove student: ${message}`);
     } finally {
       setRemovingStudentId(null);
+    }
+  };
+
+  // --- Manual Attendance Handler ---
+  const handleSubmitManualAttendance = async () => {
+    if (!selectedStudentForAttendance || !sectionData || !classId) {
+      toast.error('Please select a student and attendance status');
+      return;
+    }
+
+    setIsSubmittingAttendance(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Authentication token not found');
+
+      const payload = {
+        studentId: selectedStudentForAttendance,
+        classId: classId,
+        sectionId: sectionId,
+        status: attendanceStatus,
+        dayNumber: sectionData.dayNumber
+      };
+
+      // Use the provided endpoint for manual attendance
+      await axios.patch(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/attendance/manual`, payload, {
+        headers: { Authorization: `Bearer ${token}` , "Content-Type": "application/json" }
+      });
+
+      toast.success(`Attendance marked as ${attendanceStatus} for the student`);
+      setIsManualAttendanceDialogOpen(false);
+      setSelectedStudentForAttendance('');
+      setAttendanceStatus('present');
+    } catch (error) {
+      console.error('Failed to submit manual attendance:', error);
+      const message = error instanceof AxiosError ? error.response?.data?.message || error.message : (error as Error).message;
+      toast.error(`Failed to mark attendance: ${message}`);
+    } finally {
+      setIsSubmittingAttendance(false);
     }
   };
 
@@ -319,7 +456,6 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
                 resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude });
             },
             (error) => {
-                console.error("Geolocation error:", error);
                 let message = "Failed to get location.";
                 switch(error.code) {
                     case error.PERMISSION_DENIED: message = "Location permission denied."; break;
@@ -408,8 +544,7 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
             }
         };
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}`;
-        const response = await axios.post(`${apiUrl}/api/qrcodes/generate`, payload, { headers: { Authorization: `Bearer ${token}` } });
+        const response = await axios.post(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/qrcodes/generate`, payload, { headers: { Authorization: `Bearer ${token}` } });
 
         if (response.data?.qrImage && response.data?.expiresAt && response.data?.codeId) {
              setQrCodeDetails({
@@ -424,7 +559,6 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
                  try {
                       localStorage.setItem(MANUAL_LOCATION_STORAGE_KEY, JSON.stringify(locationCoords));
                       setStoredManualLocation(locationCoords);
-                      console.log("Saved/Updated manual location to storage:", locationCoords);
                  } catch (storageError) {
                       console.error("Failed to save manual location to localStorage", storageError);
                       toast.error("Could not save manual location for future use.");
@@ -513,8 +647,7 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
               dayNumber: sectionData.dayNumber,
               // codeId: qrCodeDetails?.codeId // Include if your API requires the specific code ID to close
           };
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}`;
-          const response = await axios.post(`${apiUrl}/api/qrcodes/close`, payload,
+          const response = await axios.post(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/qrcodes/close`, payload,
               { headers: { Authorization: `Bearer ${token}` } }
           );
 
@@ -532,21 +665,22 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
   };
 
   // --- Render Logic ---
-  if (isLoadingUser || isLoadingSection) {
+  if (isLoadingUser || isLoadingSection || isLoadingClass) {
     return ( <div className="flex justify-center items-center min-h-screen"><Spinner size="lg" /></div> );
   }
 
-  if (!sectionData && !isLoadingSection) {
+  if (!sectionData || !classData) {
     return (
       <div className="container mx-auto p-6 text-center">
          <Button variant="outline" size="sm" onClick={() => router.back()} className="mb-4 absolute top-6 left-6">
             <ChevronLeft className="mr-2 h-4 w-4" /> Back
         </Button>
-        <p className="text-xl text-muted-foreground mt-16">Section not found or access denied.</p>
+        <p className="text-xl text-muted-foreground mt-16">
+          {!sectionData ? "Section not found or access denied." : "Class data not available."}
+        </p>
       </div>
     );
   }
-  if (!sectionData) return null;
 
   const getSelectedStudentsDisplay = () => {
     if (selectedStudentIds.size === 0) return "Select student(s)...";
@@ -565,232 +699,430 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
   const qrExpired = isQrCodeExpired();
 
   return (
-    <div className="container mx-auto p-4 md:p-6 lg:p-8 relative pb-16">
-       {/* Back Button */}
-       <Button variant="outline" size="sm" onClick={() => router.back()} className="mb-4 absolute top-6 left-6 md:left-8 z-10">
-            <ChevronLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
+    <div className="container mx-auto p-4 md:p-6 lg:p-8 pb-16">
+      {/* Back Button */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => router.back()}
+        className="md:left-8"
+      >
+        <ChevronLeft className="mr-2 h-4 w-4" /> Back
+      </Button>
 
-       {/* Header Card: Section Details */}
-       <Card className="mb-8 mt-12 md:mt-16">
+      {/* Header Card: Section Details */}
+      <Card className="mb-8 md:mt-16">
         <CardHeader>
           <CardTitle className="text-2xl md:text-3xl">
             Section {sectionData.sectionNumber} ({sectionDayName})
             {sectionData.className && ` - ${sectionData.className}`}
           </CardTitle>
           <CardDescription>
-             Class ID: {sectionData.classId} | Section ID: {sectionData._id}
+            Class ID: {sectionData.classId} | Section ID: {sectionData._id}
           </CardDescription>
         </CardHeader>
         <CardContent>
-            <p className="text-sm text-muted-foreground">Created At: {new Date(sectionData.createdAt).toLocaleDateString()}</p>
+          <p className="text-sm text-muted-foreground">
+            Created At: {new Date(sectionData.createdAt).toLocaleDateString()}
+          </p>
         </CardContent>
       </Card>
 
       {/* --- QR Code Section (Instructor/Admin Only) --- */}
-       {canManage && (
-            <Card className="mb-8">
-                <CardHeader>
-                    <CardTitle>Attendance QR Code</CardTitle>
-                    <CardDescription>Generate/view QR code. Location options available.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center gap-4">
+      {canManage && (
+        <Card className="mb-8">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Attendance QR Code</CardTitle>
+              <CardDescription>
+                Generate/view QR code. Location options available.
+              </CardDescription>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsManualAttendanceDialogOpen(true)}
+              className="flex items-center gap-1.5"
+            >
+              <ClipboardCheck className="h-4 w-4" />
+              Manual Attendance
+            </Button>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center gap-4">
+            {/* --- Primary Actions (Conditional Rendering) --- */}
 
-                    {/* --- Primary Actions (Conditional Rendering) --- */}
+            {/* 1. If QR is Active: Show View and Close Buttons */}
+            {qrCodeDetails && (
+              <div className="flex flex-wrap justify-center gap-2">
+                {/* View Button */}
+                <Button
+                  onClick={() => setIsQrDialogOpen(true)}
+                  className="w-full md:w-auto"
+                  variant="secondary"
+                >
+                  <QrCode className="mr-2 h-4 w-4" /> View QR Code
+                  {qrExpired && (
+                    <span className="ml-2 text-red-500">(Expired)</span>
+                  )}
+                </Button>
 
-                    {/* 1. If QR is Active: Show View and Close Buttons */}
-                    {qrCodeDetails && (
-                        <div className="flex flex-wrap justify-center gap-2">
-                            {/* View Button */}
-                            <Button 
-                                onClick={() => setIsQrDialogOpen(true)} 
-                                className="w-full md:w-auto" 
-                                variant="secondary"
-                            >
-                                <QrCode className="mr-2 h-4 w-4" /> View QR Code
-                                {qrExpired && <span className="ml-2 text-red-500">(Expired)</span>}
-                            </Button>
-                            
-                            {/* Close QR Button (outside dialog) */}
-                            {!qrExpired && (
-                                <Button
-                                    onClick={handleCloseQr}
-                                    disabled={isClosingQr}
-                                    variant="destructive"
-                                    className="w-full md:w-auto"
-                                >
-                                    {isClosingQr ? (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <PowerOff className="mr-2 h-4 w-4" />
-                                    )}
-                                    {isClosingQr ? 'Closing...' : 'Close QR Code'}
-                                </Button>
-                            )}
-                            
-                            {/* Regenerate Button (if expired) */}
-                            {qrExpired && (
-                                <Button
-                                    onClick={handleRegenerateQr}
-                                    disabled={isRegeneratingQr}
-                                    className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white"
-                                >
-                                    {isRegeneratingQr ? (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <QrCode className="mr-2 h-4 w-4" />
-                                    )}
-                                    {isRegeneratingQr ? 'Generating...' : 'Generate New QR Code'}
-                                </Button>
-                            )}
-                        </div>
+                {/* Close QR Button (outside dialog) */}
+                {!qrExpired && (
+                  <Button
+                    onClick={handleCloseQr}
+                    disabled={isClosingQr}
+                    variant="destructive"
+                    className="w-full md:w-auto"
+                  >
+                    {isClosingQr ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <PowerOff className="mr-2 h-4 w-4" />
                     )}
+                    {isClosingQr ? "Closing..." : "Close QR Code"}
+                  </Button>
+                )}
 
-                    {/* 2. If Manual Input Form is Shown */}
-                    {showManualLocationInput && !qrCodeDetails && (
-                        <div className="w-full p-4 border rounded-md bg-secondary/30 flex flex-col gap-4 items-center shadow-inner">
-                            <p className="text-sm font-medium text-center">Enter Location Manually:</p>
-                            {/* Manual Lat/Lon Inputs */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">
-                                 <div className="grid w-full items-center gap-1.5">
-                                    <Label htmlFor="latitude" className="text-xs">Latitude</Label>
-                                    <Input type="number" id="latitude" placeholder="e.g., 40.7128" value={manualLatitude} onChange={(e) => setManualLatitude(e.target.value)} step="any" min="-90" max="90" disabled={isGeneratingQr} className="text-sm"/>
-                                </div>
-                                <div className="grid w-full items-center gap-1.5">
-                                    <Label htmlFor="longitude" className="text-xs">Longitude</Label>
-                                    <Input type="number" id="longitude" placeholder="e.g., -74.0060" value={manualLongitude} onChange={(e) => setManualLongitude(e.target.value)} step="any" min="-180" max="180" disabled={isGeneratingQr} className="text-sm"/>
-                                </div>
-                            </div>
-                            {/* Manual Submit/Cancel Buttons */}
-                            <div className="flex flex-wrap justify-center gap-2 mt-2">
-                                <Button onClick={handleManualLocationSubmit} disabled={isGeneratingQr || !manualLatitude || !manualLongitude} size="sm">
-                                    {isGeneratingQr ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                    Use & Generate QR
-                                </Button>
-                                <Button variant="outline" onClick={() => {setShowManualLocationInput(false);}} disabled={isGeneratingQr} size="sm">
-                                    Cancel Manual Entry
-                                </Button>
-                            </div>
-                        </div>
+                {/* Regenerate Button (if expired) */}
+                {qrExpired && (
+                  <Button
+                    onClick={handleRegenerateQr}
+                    disabled={isRegeneratingQr}
+                    className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {isRegeneratingQr ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <QrCode className="mr-2 h-4 w-4" />
                     )}
+                    {isRegeneratingQr
+                      ? "Generating..."
+                      : "Generate New QR Code"}
+                  </Button>
+                )}
+              </div>
+            )}
 
-                    {/* 3. If No QR Active and Not Showing Manual Input: Show Generation Options */}
-                    {!qrCodeDetails && !showManualLocationInput && (
-                        <div className="flex flex-wrap justify-center gap-2">
-                             {/* Automatic Generation Button */}
-                             <Button onClick={() => handleGenerateQr()} disabled={isGeneratingQr || isGettingLocation} className="">
-                                 {(isGeneratingQr || isGettingLocation) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
-                                 {isGettingLocation ? "Getting Location..." : isGeneratingQr ? "Generating..." : "Generate QR (Auto Location)"}
-                             </Button>
-
-                            {/* Use Stored Location Button (if available) */}
-                            {storedManualLocation && (
-                                <Button onClick={() => handleGenerateQr(storedManualLocation, 'stored')} disabled={isGeneratingQr || isGettingLocation} variant="secondary">
-                                    {(isGeneratingQr || isGettingLocation) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                    Generate QR (Use Stored)
-                                </Button>
-                            )}
-
-                             {/* Button to trigger manual input/edit */}
-                             <Button onClick={handleEditStoredLocation} variant="outline" disabled={isGeneratingQr || isGettingLocation}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                {storedManualLocation ? 'Edit Stored Location' : 'Enter Location Manually'}
-                             </Button>
-                        </div>
+            {/* 2. If Manual Input Form is Shown */}
+            {showManualLocationInput && !qrCodeDetails && (
+              <div className="w-full p-4 border rounded-md bg-secondary/30 flex flex-col gap-4 items-center shadow-inner">
+                <p className="text-sm font-medium text-center">
+                  Enter Location Manually:
+                </p>
+                {/* Manual Lat/Lon Inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">
+                  <div className="grid w-full items-center gap-1.5">
+                    <Label htmlFor="latitude" className="text-xs">
+                      Latitude
+                    </Label>
+                    <Input
+                      type="number"
+                      id="latitude"
+                      placeholder="e.g., 40.7128"
+                      value={manualLatitude}
+                      onChange={(e) => setManualLatitude(e.target.value)}
+                      step="any"
+                      min="-90"
+                      max="90"
+                      disabled={isGeneratingQr}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="grid w-full items-center gap-1.5">
+                    <Label htmlFor="longitude" className="text-xs">
+                      Longitude
+                    </Label>
+                    <Input
+                      type="number"
+                      id="longitude"
+                      placeholder="e.g., -74.0060"
+                      value={manualLongitude}
+                      onChange={(e) => setManualLongitude(e.target.value)}
+                      step="any"
+                      min="-180"
+                      max="180"
+                      disabled={isGeneratingQr}
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+                {/* Manual Submit/Cancel Buttons */}
+                <div className="flex flex-wrap justify-center gap-2 mt-2">
+                  <Button
+                    onClick={handleManualLocationSubmit}
+                    disabled={
+                      isGeneratingQr || !manualLatitude || !manualLongitude
+                    }
+                    size="sm"
+                  >
+                    {isGeneratingQr ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
                     )}
+                    Use & Generate QR
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowManualLocationInput(false);
+                    }}
+                    disabled={isGeneratingQr}
+                    size="sm"
+                  >
+                    Cancel Manual Entry
+                  </Button>
+                </div>
+              </div>
+            )}
 
-                    {/* --- Helper Text & Stored Location Display/Clear --- */}
-                    {isGettingLocation && <p className='text-sm text-muted-foreground flex items-center gap-1'><MapPin className='h-3 w-3'/> Requesting location...</p>}
-                    {/* Display stored location info only when not actively editing/inputting */}
-                    {storedManualLocation && !showManualLocationInput && (
-                        <div className="text-xs text-muted-foreground mt-2 text-center border p-2 rounded-md bg-background w-full max-w-md">
-                            Stored Location: Lat {storedManualLocation.latitude.toFixed(4)}, Lon {storedManualLocation.longitude.toFixed(4)}
-                            <Button onClick={handleClearStoredLocation} variant="link" size="sm" className="ml-2 text-destructive h-auto p-0 align-middle" disabled={isGeneratingQr || isGettingLocation}>
-                                <RotateCcw className="mr-1 h-3 w-3"/> Clear
-                            </Button>
-                        </div>
+            {/* 3. If No QR Active and Not Showing Manual Input: Show Generation Options */}
+            {!qrCodeDetails && !showManualLocationInput && (
+              <div className="flex flex-wrap justify-center gap-2">
+                {/* Automatic Generation Button */}
+                <Button
+                  onClick={() => handleGenerateQr()}
+                  disabled={isGeneratingQr || isGettingLocation}
+                  className=""
+                >
+                  {isGeneratingQr || isGettingLocation ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <MapPin className="mr-2 h-4 w-4" />
+                  )}
+                  {isGettingLocation
+                    ? "Getting Location..."
+                    : isGeneratingQr
+                      ? "Generating..."
+                      : "Generate QR (Auto Location)"}
+                </Button>
+
+                {/* Use Stored Location Button (if available) */}
+                {storedManualLocation && (
+                  <Button
+                    onClick={() =>
+                      handleGenerateQr(storedManualLocation, "stored")
+                    }
+                    disabled={isGeneratingQr || isGettingLocation}
+                    variant="secondary"
+                  >
+                    {isGeneratingQr || isGettingLocation ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
                     )}
-                     <p className="text-xs text-muted-foreground mt-2 text-center">
-                        QR requires location. Attendance radius is 500 meters.
-                    </p>
-                </CardContent>
-            </Card>
-       )}
+                    Generate QR (Use Stored)
+                  </Button>
+                )}
+
+                {/* Button to trigger manual input/edit */}
+                <Button
+                  onClick={handleEditStoredLocation}
+                  variant="outline"
+                  disabled={isGeneratingQr || isGettingLocation}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  {storedManualLocation
+                    ? "Edit Stored Location"
+                    : "Enter Location Manually"}
+                </Button>
+              </div>
+            )}
+
+            {/* --- Helper Text & Stored Location Display/Clear --- */}
+            {isGettingLocation && (
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <MapPin className="h-3 w-3" /> Requesting location...
+              </p>
+            )}
+            {/* Display stored location info only when not actively editing/inputting */}
+            {storedManualLocation && !showManualLocationInput && (
+              <div className="text-xs text-muted-foreground mt-2 text-center border p-2 rounded-md bg-background w-full max-w-md">
+                Stored Location: Lat {storedManualLocation.latitude.toFixed(4)},
+                Lon {storedManualLocation.longitude.toFixed(4)}
+                <Button
+                  onClick={handleClearStoredLocation}
+                  variant="link"
+                  size="sm"
+                  className="ml-2 text-destructive h-auto p-0 align-middle"
+                  disabled={isGeneratingQr || isGettingLocation}
+                >
+                  <RotateCcw className="mr-1 h-3 w-3" /> Clear
+                </Button>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              QR requires location. Attendance radius is 500 meters.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* --- Student Management Section --- */}
       <Card>
         <CardHeader>
           <CardTitle>Manage Students ({sectionData.students.length})</CardTitle>
-          <CardDescription>Add or remove students from this section.</CardDescription>
+          <CardDescription>
+            Add or remove students from this section.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Add Student Controls */}
+          {/* Add Student Controls - Updated popover */}
           {canManage && (
-            <div className="flex flex-col sm:flex-row items-center gap-2 mb-6">
-              {/* Popover Trigger */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-6">
               <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" aria-expanded={popoverOpen} className="flex-1 justify-between w-full sm:w-auto" disabled={isLoadingAvailableStudents || isAddingStudents}>
-                     {isLoadingAvailableStudents ? "Loading..." : getSelectedStudentsDisplay()}
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={popoverOpen}
+                    className="w-full sm:w-[350px] justify-between"
+                    disabled={isLoadingAvailableStudents || isAddingStudents}
+                  >
+                    {isLoadingAvailableStudents
+                      ? "Loading..."
+                      : getSelectedStudentsDisplay()}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                {/* Popover Content */}
-                <PopoverContent className="w-[--radix-popover-trigger-width] max-h-[300px] overflow-y-auto p-0">
+                {/* Popover Content - Updated */}
+                <PopoverContent className="w-[350px] p-0" align="start">
                   <Command>
                     <CommandInput placeholder="Search available students..." />
-                    <CommandList>
-                        <CommandEmpty>No students found or all added.</CommandEmpty>
-                        <CommandGroup>
+                    <CommandList className="max-h-[300px] overflow-auto">
+                      <CommandEmpty>
+                        {availableStudents.length === 0 
+                          ? "All students from this class are already in this section."
+                          : "No matching students found."}
+                      </CommandEmpty>
+                      <CommandGroup>
                         {availableStudents.map((student) => (
-                            <CommandItem key={student._id} value={`${student.name} ${student.studentId}`} onSelect={() => {
-                                setSelectedStudentIds(prev => {
-                                    const newSet = new Set(prev);
-                                    newSet.has(student._id) ? newSet.delete(student._id) : newSet.add(student._id);
-                                    return newSet;
-                                });
-                            }}>
-                            <Check className={cn("mr-2 h-4 w-4", selectedStudentIds.has(student._id) ? "opacity-100" : "opacity-0")} />
-                            {student.name} ({student.studentId})
-                            </CommandItem>
+                          <CommandItem
+                            key={student._id}
+                            value={`${student.name} ${student.studentId}`}
+                            onSelect={() => {
+                              setSelectedStudentIds((prev) => {
+                                const newSet = new Set(prev);
+                                newSet.has(student._id)
+                                  ? newSet.delete(student._id)
+                                  : newSet.add(student._id);
+                                return newSet;
+                              });
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedStudentIds.has(student._id)
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span>{student.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                ID: {student.studentId}
+                              </span>
+                            </div>
+                          </CommandItem>
                         ))}
-                        </CommandGroup>
+                      </CommandGroup>
                     </CommandList>
                   </Command>
                 </PopoverContent>
               </Popover>
               {/* Add Button */}
-              <Button onClick={handleAddStudents} disabled={selectedStudentIds.size === 0 || isAddingStudents || isLoadingAvailableStudents} className="w-full sm:w-auto">
-                {isAddingStudents ? <Loader2 className="h-4 w-4 animate-spin" /> : `Add ${selectedStudentIds.size || ''} Selected`}
+              <Button
+                onClick={handleAddStudents}
+                disabled={
+                  selectedStudentIds.size === 0 ||
+                  isAddingStudents ||
+                  isLoadingAvailableStudents
+                }
+                className="w-full sm:w-auto"
+              >
+                {isAddingStudents ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-2" />
+                )}
+                Add {selectedStudentIds.size || ""} Student
+                {selectedStudentIds.size !== 1 ? "s" : ""}
               </Button>
+            </div>
+          )}
+
+          {/* Show a note about available students */}
+          {canManage && !isLoadingAvailableStudents && availableStudents.length === 0 && (
+            <div className="mb-4 text-sm text-muted-foreground bg-muted/20 p-3 rounded-md">
+              <p>All students from this class are already added to this section.</p>
             </div>
           )}
 
           {/* Students Table */}
           {isLoadingSection && !sectionData ? (
-             <div className="flex justify-center py-10"><Spinner size="lg" /></div>
-           ) : sectionData.students && sectionData.students.length > 0 ? (
+            <div className="flex justify-center py-10">
+              <Spinner size="lg" />
+            </div>
+          ) : sectionData.students && sectionData.students.length > 0 ? (
             <div className="border rounded-md overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Student ID</TableHead>
-                    <TableHead className="hidden md:table-cell">Email</TableHead>
-                    {canManage && <TableHead className="w-[80px] text-right">Actions</TableHead>}
+                    <TableHead className="hidden md:table-cell">
+                      Email
+                    </TableHead>
+                    {canManage && (
+                      <TableHead className="w-[120px] text-right">
+                        Actions
+                      </TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {sectionData.students.map((student) => (
                     <TableRow key={student._id}>
-                      <TableCell className="font-medium">{student.name}</TableCell>
+                      <TableCell className="font-medium">
+                        {student.name}
+                      </TableCell>
                       <TableCell>{student.studentId}</TableCell>
-                      <TableCell className="hidden md:table-cell">{student.email}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {student.email}
+                      </TableCell>
                       {canManage && (
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveStudent(student._id)} disabled={removingStudentId === student._id} aria-label={`Remove ${student.name}`}>
-                            {removingStudentId === student._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            {/* Manual Attendance Button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setSelectedStudentForAttendance(student._id);
+                                setIsManualAttendanceDialogOpen(true);
+                              }}
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              aria-label={`Mark attendance for ${student.name}`}
+                            >
+                              <UserCheck className="h-4 w-4" />
+                            </Button>
+                            
+                            {/* Remove Button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                              onClick={() => handleRemoveStudent(student._id)}
+                              disabled={removingStudentId === student._id}
+                              aria-label={`Remove ${student.name}`}
+                            >
+                              {removingStudentId === student._id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>
@@ -800,7 +1132,9 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
             </div>
           ) : (
             <div className="text-center py-10 bg-muted/10 rounded-lg border border-dashed">
-              <p className="text-muted-foreground">No students are currently enrolled in this section.</p>
+              <p className="text-muted-foreground">
+                No students are currently enrolled in this section.
+              </p>
             </div>
           )}
         </CardContent>
@@ -808,17 +1142,93 @@ export default function SectionPage({params}: {params: {id: string, sectionId: s
 
       {/* --- QR Code Dialog (Modal) --- */}
       {qrCodeDetails && (
-          <QrCodeDialog
-              isOpen={isQrDialogOpen}
-              onOpenChange={setIsQrDialogOpen}
-              qrCodeDataUrl={qrCodeDetails.qrImage}
-              expiresAt={qrCodeDetails.expiresAt}
-              onCloseQr={handleCloseQr}
-              isClosingQr={isClosingQr}
-              onRegenerateQr={handleRegenerateQr}
-              isRegeneratingQr={isRegeneratingQr}
-          />
+        <QrCodeDialog
+          isOpen={isQrDialogOpen}
+          onOpenChange={setIsQrDialogOpen}
+          qrCodeDataUrl={qrCodeDetails.qrImage}
+          expiresAt={qrCodeDetails.expiresAt}
+          onCloseQr={handleCloseQr}
+          isClosingQr={isClosingQr}
+          onRegenerateQr={handleRegenerateQr}
+          isRegeneratingQr={isRegeneratingQr}
+        />
       )}
+
+      {/* --- Manual Attendance Dialog --- */}
+      <Dialog open={isManualAttendanceDialogOpen} onOpenChange={setIsManualAttendanceDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Manual Attendance</DialogTitle>
+            <DialogDescription>
+              Record attendance manually for students who didn't scan the QR code.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            {/* Student Selector */}
+            <div className="space-y-2">
+              <Label htmlFor="student-select">Select Student</Label>
+              <Select
+                value={selectedStudentForAttendance}
+                onValueChange={setSelectedStudentForAttendance}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a student" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sectionData.students.map((student) => (
+                    <SelectItem key={student._id} value={student._id}>
+                      {student.name} ({student.studentId})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Attendance Status */}
+            <div className="space-y-2">
+              <Label>Attendance Status</Label>
+              <RadioGroup 
+                value={attendanceStatus} 
+                onValueChange={(value) => setAttendanceStatus(value as AttendanceStatus)}
+                className="flex space-x-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="present" id="present" />
+                  <Label htmlFor="present" className="cursor-pointer">Present</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="late" id="late" />
+                  <Label htmlFor="late" className="cursor-pointer">Late</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="absent" id="absent" />
+                  <Label htmlFor="absent" className="cursor-pointer">Absent</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsManualAttendanceDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmitManualAttendance} 
+              disabled={!selectedStudentForAttendance || isSubmittingAttendance}
+            >
+              {isSubmittingAttendance ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Save Attendance
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

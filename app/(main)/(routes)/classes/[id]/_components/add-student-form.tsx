@@ -1,23 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, ChevronsUpDown, Loader2, Plus, X } from 'lucide-react';
-import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
 import { 
   Command, 
   CommandEmpty, 
   CommandGroup, 
   CommandInput, 
-  CommandItem 
+  CommandItem, 
+  CommandList
 } from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils"; // Make sure you have this utility
+import { Check, ChevronsUpDown, Plus, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Spinner } from '@/components/spinner';
 
 interface Student {
   _id: string;
@@ -30,6 +32,7 @@ interface ClassData {
   _id: string;
   name: string;
   students: Student[];
+  // other properties
 }
 
 interface AddStudentFormProps {
@@ -38,175 +41,150 @@ interface AddStudentFormProps {
 }
 
 export default function AddStudentForm({ classData, onAddStudent }: AddStudentFormProps) {
-  const [allStudents, setAllStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
-  const [selectedStudents, setSelectedStudents] = useState<Student[]>([]);
+  const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAdding, setIsAdding] = useState(false);
   const [open, setOpen] = useState(false);
-console.log(selectedStudents)
-  // Get list of available students
+
   useEffect(() => {
-    const fetchStudents = async () => {
-      setSearching(true);
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
-        
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/students`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        // Filter out students already in the class
-        const enrolledStudentIds = new Set(classData.students.map(student => student._id));
-        const availableStudents = response.data.data.filter(
-          (student: Student) => !enrolledStudentIds.has(student._id)
-        );
-        
-        setAllStudents(availableStudents);
-      } catch (err) {
-        console.error("Failed to fetch students:", err);
-        toast.error("Failed to load available students");
-      } finally {
-        setSearching(false);
+    fetchAvailableStudents();
+  }, []);
+
+  const fetchAvailableStudents = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Authentication token not found');
+        return;
       }
-    };
-
-    fetchStudents();
-  }, [classData.students]);
-
-  // Handle student selection
-// Handle student selection
-const toggleStudentSelection = (studentId: string) => {
-  // Check if student is already selected
-  const isAlreadySelected = selectedStudentIds.includes(studentId);
-  
-  if (isAlreadySelected) {
-    // Remove student - update both states separately
-    setSelectedStudentIds(current => current.filter(id => id !== studentId));
-    setSelectedStudents(current => current.filter(student => student._id !== studentId));
-  } else {
-    // Add student - update both states separately
-    const studentToAdd = allStudents.find(student => student._id === studentId);
-    if (studentToAdd) {
-      setSelectedStudentIds(current => [...current, studentId]);
-      setSelectedStudents(current => [...current, studentToAdd]);
+      
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/students`, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Filter out students already in this class
+      const classStudentIds = new Set(classData.students?.map(s => s._id) || []);
+      const available = response.data.data.filter(
+        (student: Student) => !classStudentIds.has(student._id)
+      );
+      
+      setAvailableStudents(available);
+    } catch (error) {
+      console.error('Failed to fetch students', error);
+      toast.error('Failed to load available students');
+    } finally {
+      setIsLoading(false);
     }
-  }
-};
-
-  // Remove a selected student
-  const removeSelectedStudent = (studentId: string) => {
-    setSelectedStudentIds(current => current.filter(id => id !== studentId));
-    setSelectedStudents(current => current.filter(student => student._id !== studentId));
   };
 
-  const handleAddClick = async () => {
-    if (selectedStudentIds.length === 0) {
-      toast.error("Please select at least one student");
-      return;
-    }
+  const handleAddStudent = async () => {
+    if (!selectedStudentId) return;
     
-    setLoading(true);
+    setIsAdding(true);
     try {
-      await onAddStudent(selectedStudentIds);
-      // Reset selections after successful add
-      setSelectedStudentIds([]);
-      setSelectedStudents([]);
+      await onAddStudent([selectedStudentId]);
+      
+      // Reset selection
+      setSelectedStudentId('');
+      setOpen(false);
+      
+      // Refresh available students
+      fetchAvailableStudents();
+    } catch (error) {
+      console.error('Failed to add student', error);
+      // Error handled by parent component
     } finally {
-      setLoading(false);
+      setIsAdding(false);
     }
   };
 
   return (
     <Card className="mb-6">
-      <CardHeader>
-        <CardTitle className="text-xl">Add Students</CardTitle>
-        <CardDescription>Enroll students in this class</CardDescription>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg flex justify-between items-center">
+          Add Student to Class
+          <Badge variant="outline" className="ml-2">
+            {availableStudents.length} available
+          </Badge>
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-grow">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          {isLoading ? (
+            <div className="flex items-center space-x-2 w-full">
+              <Button variant="outline" className="w-full" disabled>
+                <Spinner size="small" className="mr-2" />
+                Loading students...
+              </Button>
+            </div>
+          ) : (
+            <>
               <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-full justify-between"
-                    disabled={searching || loading || allStudents.length === 0}
+                    className="w-full sm:w-[350px] justify-between"
+                    disabled={isAdding || availableStudents.length === 0}
                   >
-                    {searching 
-                      ? "Loading students..." 
-                      : allStudents.length === 0
-                      ? "No students available"
-                      : "Select students"}
+                    {selectedStudentId ? 
+                      availableStudents.find(student => student._id === selectedStudentId)?.name || "Select student" : 
+                      availableStudents.length === 0 ? "No students available" : "Select student to add"}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0">
+                <PopoverContent className="w-[350px] p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Search students..." />
-                    <CommandEmpty>No students found.</CommandEmpty>
-                    <CommandGroup>
-                      {allStudents.map((student) => (
-                        <CommandItem
-                          key={student._id}
-                          value={student.name}
-                          onSelect={() => toggleStudentSelection(student._id)}
-                        >
-                          <div className={cn(
-                            "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                            selectedStudentIds.includes(student._id) 
-                              ? "bg-primary text-primary-foreground" 
-                              : "opacity-50"
-                          )}>
-                            {selectedStudentIds.includes(student._id) && (
-                              <Check className="h-4 w-4" />
-                            )}
-                          </div>
-                          <span>{student.name}</span>
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            ({student.studentId})
-                          </span>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
+                    <CommandInput placeholder="Search student..." />
+                    <CommandList className="max-h-[300px] overflow-auto">
+                      <CommandEmpty>No student found.</CommandEmpty>
+                      <CommandGroup>
+                        {availableStudents.map((student) => (
+                          <CommandItem
+                            key={student._id}
+                            value={`${student.name} ${student.studentId}`}
+                            onSelect={() => {
+                              setSelectedStudentId(student._id === selectedStudentId ? "" : student._id);
+                              setOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedStudentId === student._id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span>{student.name}</span>
+                              <span className="text-xs text-muted-foreground">ID: {student.studentId}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
                   </Command>
                 </PopoverContent>
               </Popover>
-            </div>
-            <Button 
-              onClick={handleAddClick} 
-              disabled={selectedStudentIds.length === 0 || loading}
-            >
-              {loading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Plus className="mr-2 h-4 w-4" />
-              )}
-              Add {selectedStudentIds.length > 0 ? `(${selectedStudentIds.length})` : ''}
-            </Button>
-          </div>
-
-          {/* Selected students */}
-          {selectedStudents.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {selectedStudents.map(student => (
-                <Badge key={student._id} variant="secondary" className="flex items-center gap-1">
-                  {student.name}
-                  <button 
-                    onClick={() => removeSelectedStudent(student._id)}
-                    className="ml-1 rounded-full hover:bg-muted p-0.5 hover:text-red-400"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
+              <Button 
+                onClick={handleAddStudent} 
+                disabled={!selectedStudentId || isAdding}
+                className="w-full sm:w-auto"
+              >
+                {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                Add to Class
+              </Button>
+            </>
           )}
         </div>
+        {availableStudents.length === 0 && !isLoading && (
+          <p className="text-sm text-muted-foreground mt-2">
+            All registered students have already been added to this class.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

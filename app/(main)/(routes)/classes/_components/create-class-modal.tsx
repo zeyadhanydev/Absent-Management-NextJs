@@ -61,9 +61,8 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
       if (!token) {
         throw new Error("Authentication token not found.");
       }
-      console.log(name, semester, teacherId);
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/class/create`,
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/create`,
         {
           name,
           semester,

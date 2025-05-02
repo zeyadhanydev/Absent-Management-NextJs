@@ -9,21 +9,21 @@ export default function Home() { // Renamed 'page' to 'Home' for clarity
 
   return (
     // Use flex column to structure Nav, Main, Footer
-    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-neutral-900">
 
       {/* Navigation Bar */}
-      <nav className="bg-primary text-primary-foreground shadow-md sticky top-0 z-50"> {/* Use primary color */}
+    <nav className="bg-primary text-primary-foreground shadow-md sticky top-0 z-50 dark:bg-neutral-800 dark:text-white"> {/* Use primary color */}
         <div className="container mx-auto flex justify-between items-center p-4">
           <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
              <GraduationCap size={28} /> {/* Example Logo/Icon */}
-             <h1 className="text-xl md:text-2xl font-bold">
+             <h1 className="text-xl md:text-2xl font-bold ">
                 Student Management
              </h1>
           </Link>
           <div className="flex space-x-2 md:space-x-4 items-center">
              {/* Keep using components if they handle auth state */}
-             <LoginButton variant="ghost" size="sm" className="hover:bg-primary/90 hover:text-primary-foreground">Login</LoginButton>
-             <RegisterButton variant="secondary" size="sm">Register</RegisterButton>
+             <LoginButton variant="ghost" size="sm" className="hover:bg-primary/90 hover:text-primary-foreground dark:text-white">Login</LoginButton>
+             <RegisterButton className='dark:text-white' variant="secondary" size="sm">Register</RegisterButton>
              {/* Alternatively, use simple links if components aren't needed here:
              <Link href="/login"><Button variant="ghost" size="sm">Login</Button></Link>
              <Link href="/register"><Button variant="secondary" size="sm">Register</Button></Link>
@@ -66,7 +66,7 @@ export default function Home() { // Renamed 'page' to 'Home' for clarity
       </main>
 
       {/* Footer */}
-      <footer className="py-6 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+      <footer className="py-6 bg-gray-100 dark:bg-neutral-800 border-t border-gray-200 dark:border-gray-700">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
           © {new Date().getFullYear()} Student Management System. All Rights Reserved.
           {/* Add other footer links if needed */}

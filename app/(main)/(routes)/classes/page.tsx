@@ -52,11 +52,10 @@ export default function ClassesPage() {
        const token = localStorage.getItem("token");
        if (!token) {
          setClasses([]);
-         console.log("No token found for fetching classes.");
          return;
        }
        const response = await axios.get<{ data: ClassData[] }>(
-         `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/class/my-classes`,
+         `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/my-classes`,
          { headers: { Authorization: `Bearer ${token}` } }
        );
        setClasses(response.data.data || []);
@@ -88,11 +87,10 @@ export default function ClassesPage() {
         const token = localStorage.getItem("token");
         if (!token) {
           setUserData(null);
-          console.log("No token found for fetching user data.");
           return;
         }
         const response = await axios.get<{ data: UserData }>(
-          `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/me`,
+          `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/me`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setUserData(response.data.data);
@@ -115,33 +113,30 @@ export default function ClassesPage() {
   };
 
   const handleConfirmDelete = async (classId: string): Promise<void> => {
-    // This function now returns a Promise to handle loading state in the modal
     const token = localStorage.getItem("token");
     if (!token) {
         toast.error("Authentication token not found. Please log in again.");
-        throw new Error("Authentication token not found."); // Throw error to signal failure
+        throw new Error("Authentication token not found."); 
     }
 
     try {
-      // IMPORTANT: Axios DELETE often sends data in config.data, not as the second arg like POST
       const response = await axios.delete(
-        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/class/delete`, // URL might need classId in path depending on API design, but following user spec for body
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/delete`, // URL might need classId in path depending on API design, but following user spec for body
         {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          data: { // Send classId in the request body as specified
+          data: { 
             classId: classId,
           }
         }
       );
 
-      if (response.status === 200 || response.status === 204) { // Handle 200 OK or 204 No Content
+      if (response.status === 200 || response.status === 204) {
         toast.success(`Class "${classToDelete?.name || 'Class'}" deleted successfully!`);
-        await getAllClasses(false); // Refresh the list without main spinner
-        setClassToDelete(null); // Clear the class to delete state
-        // The modal will close itself via onOpenChange on success
+        await getAllClasses(false); 
+        setClassToDelete(null); 
       } else {
          throw new Error(response.data?.message || `Failed to delete class (Status: ${response.status})`);
       }
@@ -154,8 +149,8 @@ export default function ClassesPage() {
          errorMessage = err.message;
        }
       toast.error(errorMessage);
-      setClassToDelete(null); // Clear state even on error
-      throw err; // Re-throw the error so the modal knows deletion failed
+      setClassToDelete(null); 
+      throw err; 
     }
   };
   // --- End Delete Logic ---
@@ -164,7 +159,7 @@ export default function ClassesPage() {
   const canCreateClass = !isUserDataLoading && userData && (userData.role === 'admin' || userData.role === 'instructor');
 
   if (isLoadingClasses || isUserDataLoading) {
-    return ( /* ... loading spinner ... */
+    return ( 
         <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
             <Spinner size="lg" />
         </div>
@@ -191,20 +186,18 @@ export default function ClassesPage() {
       )}
 
       {/* Content Grid */}
-      {classes.length === 0 && !isLoadingClasses ? ( /* ... no classes message ... */
+      {classes.length === 0 && !isLoadingClasses ? (
          <div className="text-center text-muted-foreground mt-10">
            <p>You are not enrolled in any classes yet, or no classes found.</p>
          </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-6">
           {classes.map((classItem) => (
             <ClassCard
                 key={classItem._id}
                 classData={classItem}
-                userData={userData} // Pass user data down
-                onDelete={handleDeleteRequest} // Pass the delete handler
-                // Optional: onClick for navigation
-                // onClick={() => router.push(`/classes/${classItem._id}`)}
+                userData={userData} 
+                onDelete={handleDeleteRequest} 
             />
           ))}
         </div>

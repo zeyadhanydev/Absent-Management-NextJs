@@ -22,7 +22,8 @@ import {
   CommandEmpty, 
   CommandGroup, 
   CommandInput, 
-  CommandItem 
+  CommandItem,
+  CommandList 
 } from "@/components/ui/command";
 import {
   Popover,
@@ -50,11 +51,19 @@ interface Section {
   createdAt: string;
 }
 
+interface ClassData {
+  _id: string;
+  name: string;
+  students: Student[];
+  // other class properties as needed
+}
+
 interface SectionStudentsModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   section: Section;
   classId: string;
+  classData: ClassData;
   canManage: boolean;
 }
 
@@ -63,9 +72,10 @@ export default function SectionStudentsModal({
   onOpenChange,
   section,
   classId,
+  classData,
   canManage
 }: SectionStudentsModalProps) {
-  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
   const [sectionStudents, setSectionStudents] = useState<Student[]>(section.students || []);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
@@ -73,37 +83,35 @@ export default function SectionStudentsModal({
   const [removingStudentId, setRemovingStudentId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
-  // When the modal opens, fetch available students
+  // Filter available students when the modal opens
   useEffect(() => {
     if (isOpen) {
-      fetchAvailableStudents();
+      filterAvailableStudents();
       // Update section students from the section prop
       setSectionStudents(section.students || []);
     }
-  }, [isOpen, section]);
+  }, [isOpen, section, classData]);
 
-  const fetchAvailableStudents = async () => {
+  // Filter students who are in the class but not in this section
+  const filterAvailableStudents = () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Authentication token not found');
+      if (!classData || !classData.students) {
+        toast.error('Class data not available');
         return;
       }
       
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/students`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Create a set of student IDs already in this section for fast lookup
+      const sectionStudentIds = new Set(section.students?.map(s => s._id) || []);
       
-      // Filter out students already in this section
-      const sectionStudentIds = new Set(section.students?.map(s => s._id));
-      const availableStudents = response.data.data.filter(
-        (student: Student) => !sectionStudentIds.has(student._id)
+      // Filter to only include students who are in the class but not in this section
+      const available = classData.students.filter(
+        student => !sectionStudentIds.has(student._id)
       );
       
-      setAllStudents(availableStudents);
+      setAvailableStudents(available);
     } catch (error) {
-      console.error('Failed to fetch students', error);
+      console.error('Failed to filter students', error);
       toast.error('Failed to load available students');
     } finally {
       setIsLoading(false);
@@ -122,7 +130,7 @@ export default function SectionStudentsModal({
       }
       
       await axios.post(
-        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/sections/add-students`,
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/sections/add-students`,
         {
           sectionId: section._id,
           studentIds: [selectedStudentId]
@@ -130,14 +138,13 @@ export default function SectionStudentsModal({
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      // Find the added student from allStudents and add to sectionStudents
-      const addedStudent = allStudents.find(s => s._id === selectedStudentId);
+      // Find the added student from availableStudents and add to sectionStudents
+      const addedStudent = availableStudents.find(s => s._id === selectedStudentId);
       if (addedStudent) {
         setSectionStudents(prev => [...prev, addedStudent]);
+        // Remove the student from available students
+        setAvailableStudents(prev => prev.filter(s => s._id !== selectedStudentId));
       }
-      
-      // Remove the added student from available students
-      setAllStudents(prev => prev.filter(s => s._id !== selectedStudentId));
       
       // Reset selection
       setSelectedStudentId('');
@@ -146,7 +153,7 @@ export default function SectionStudentsModal({
       toast.success('Student added to section');
     } catch (error) {
       console.error('Failed to add student to section', error);
-      toast.error(`Failed to add student to section: ${error}`);
+      toast.error('Failed to add student to section');
     } finally {
       setIsUpdating(false);
     }
@@ -162,20 +169,25 @@ export default function SectionStudentsModal({
       }
       
       await axios.delete(
-        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/sections/remove-students`,
-        { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json"} , data:  {
-          sectionId: section._id,
-          studentIds: [studentId]
-        }} 
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/sections/remove-students`,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`, 
+            "Content-Type": "application/json"
+          }, 
+          data: {
+            sectionId: section._id,
+            studentIds: [studentId]
+          }
+        } 
       );
       
-      // Remove from section students
-      setSectionStudents(prev => prev.filter(s => s._id !== studentId));
-      
-      // Add back to available students
+      // Find the removed student and add it back to available students
       const removedStudent = sectionStudents.find(s => s._id === studentId);
       if (removedStudent) {
-        setAllStudents(prev => [...prev, removedStudent]);
+        setAvailableStudents(prev => [...prev, removedStudent]);
+        // Remove from section students
+        setSectionStudents(prev => prev.filter(s => s._id !== studentId));
       }
       
       toast.success('Student removed from section');
@@ -200,55 +212,62 @@ export default function SectionStudentsModal({
         <div className="py-4">
           {/* Student selector and add button - only for admins/instructors */}
           {canManage && (
-            <div className="flex items-center space-x-2 mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-4">
               <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="flex-1 justify-between"
-                    disabled={isLoading || isUpdating}
+                    className="w-full sm:w-[350px] justify-between"
+                    disabled={isLoading || isUpdating || availableStudents.length === 0}
                   >
                     {isLoading ? "Loading students..." : 
                      selectedStudentId ? 
-                     allStudents.find(student => student._id === selectedStudentId)?.name || "Select student" : 
-                     "Select student"}
+                     availableStudents.find(student => student._id === selectedStudentId)?.name || "Select student" : 
+                     availableStudents.length === 0 ? "No students available" : "Select student"}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0">
+                <PopoverContent className="w-[350px] p-0" align="start">
                   <Command>
                     <CommandInput placeholder="Search student..." />
-                    <CommandEmpty>No student found.</CommandEmpty>
-                    <CommandGroup>
-                      {allStudents.map((student) => (
-                        <CommandItem
-                          key={student._id}
-                          value={student.name}
-                          onSelect={() => {
-                            setSelectedStudentId(student._id === selectedStudentId ? "" : student._id);
-                            setOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedStudentId === student._id ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {student.name} ({student.studentId})
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
+                    <CommandList className="max-h-[300px] overflow-auto">
+                      <CommandEmpty>No student found.</CommandEmpty>
+                      <CommandGroup>
+                        {availableStudents.map((student) => (
+                          <CommandItem
+                            key={student._id}
+                            value={`${student.name} ${student.studentId}`}
+                            onSelect={() => {
+                              setSelectedStudentId(student._id === selectedStudentId ? "" : student._id);
+                              setOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedStudentId === student._id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span>{student.name}</span>
+                              <span className="text-xs text-muted-foreground">ID: {student.studentId}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
                   </Command>
                 </PopoverContent>
               </Popover>
               <Button 
                 onClick={handleAddStudent} 
                 disabled={!selectedStudentId || isUpdating || isLoading}
+                className="w-full sm:w-auto"
               >
-                {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+                {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Add to Section
               </Button>
             </div>
           )}
@@ -265,7 +284,7 @@ export default function SectionStudentsModal({
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Student ID</TableHead>
-                    <TableHead>Email</TableHead>
+                    <TableHead className="hidden md:table-cell">Email</TableHead>
                     {canManage && <TableHead className="w-[80px]">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
@@ -274,7 +293,7 @@ export default function SectionStudentsModal({
                     <TableRow key={student._id}>
                       <TableCell className="font-medium">{student.name}</TableCell>
                       <TableCell>{student.studentId}</TableCell>
-                      <TableCell>{student.email}</TableCell>
+                      <TableCell className="hidden md:table-cell">{student.email}</TableCell>
                       {canManage && (
                         <TableCell>
                           <Button
@@ -285,7 +304,7 @@ export default function SectionStudentsModal({
                             disabled={removingStudentId === student._id}
                           >
                             {removingStudentId === student._id ? (
-                              <div className="h-4 w-4 border-2 border-t-transparent animate-spin rounded-full" />
+                              <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <Trash2 className="h-4 w-4" />
                             )}

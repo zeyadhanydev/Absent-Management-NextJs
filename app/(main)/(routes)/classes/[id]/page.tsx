@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { ChevronLeft, Plus } from 'lucide-react';
+import { BarChart3, ChevronLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/spinner';
@@ -65,7 +65,7 @@ export default function ClassDetailPage() {
   const [isLoadingClass, setIsLoadingClass] = useState(true);
   const [isLoadingSections, setIsLoadingSections] = useState(true);
   const [isCreatingSectionModalOpen, setIsCreatingSectionModalOpen] = useState(false);
-  
+  const router = useRouter();
   // Permissions check
   const canManage = userData && (userData.role === 'admin' || (userData.role === 'instructor' && classData?.teacherId === userData._id));
 
@@ -75,7 +75,7 @@ export default function ClassDetailPage() {
       const token = localStorage.getItem('token');
       if (!token) return;
       
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/auth/me`, {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -95,7 +95,7 @@ export default function ClassDetailPage() {
         return;
       }
       
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/class/my-classes`, {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/my-classes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -121,11 +121,10 @@ export default function ClassDetailPage() {
       if (!token) return;
       
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/sections/my-sections`,
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/sections/my-sections`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
             
-      console.log(response.data);  
       // Filter sections by the current classId
       const filteredSections = response.data.data.filter((section: Section) => 
         section.classId === classId
@@ -150,7 +149,7 @@ export default function ClassDetailPage() {
       }
       
       await axios.post(
-        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/class/add-students`,
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/add-students`,
         {
           classId,
           studentIds
@@ -175,7 +174,7 @@ export default function ClassDetailPage() {
         return;
       }
       
-      await axios.delete(`${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/class/remove-students`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/remove-students`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -211,10 +210,9 @@ export default function ClassDetailPage() {
           return;
       }
   
-      console.log('Creating section with:', { classId, sectionNumber, dayNumber }); // Log data being sent
   
       await axios.post(
-        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/sections/create`,
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/sections/create`,
         {
           classId, // Make sure this variable holds the correct class ID
           sectionNumber,
@@ -248,10 +246,8 @@ export default function ClassDetailPage() {
         return;
       }
       
-      console.log(sectionId)
-      console.log(token)
       await axios.delete(
-        `${process.env.NEXT_PUBLIC_PROTOCOL}://${process.env.NEXT_PUBLIC_HOST ||process.env.NEXT_PUBLIC_NETWORK_HOST}:${process.env.NEXT_PUBLIC_PORT || process.env.NEXT_PUBLIC_NETWORK_PORT}/api/sections/delete`,
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/sections/delete`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -312,11 +308,16 @@ export default function ClassDetailPage() {
               <ChevronLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <div>
+          <div className='flex flex-col'>
             <h1 className="text-2xl md:text-3xl font-bold">{classData.name}</h1>
-            <p className="text-muted-foreground">{classData.semester}</p>
+            <p className="text-white font-bold text-xl">Semester: {classData.semester}</p>
           </div>
         </div>
+        <Button onClick={(e) => {
+          e.stopPropagation()
+          router.push(`/classes/${classId}/attendance`)}} variant="outline" className="hidden lg:flex">
+            <BarChart3 className="mr-2 h-4 w-4" /> Attendance
+          </Button>
         {canManage && (
           <Button onClick={() => setIsCreatingSectionModalOpen(true)}>
             <Plus className="mr-2 h-4 w-4" /> Create Section
@@ -379,6 +380,8 @@ export default function ClassDetailPage() {
                 section={section}
                 classId={classId}
                 canManage={!!canManage}
+
+                classData={classData}
                
                 onDelete={handleDeleteSection}
               />
