@@ -11,12 +11,17 @@ import {
   PlusCircle,
   ChevronDown,
   AlertCircle,
-  Users
+  Users,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import React, { ComponentRef, useEffect, useRef, useState } from "react";
+import React, {
+  ComponentRef,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useMediaQuery } from "usehooks-ts";
-import { Item } from "./item";
 import { SidebarItem } from "./sidebar-item";
 import Link from "next/link";
 import LoginButton from "@/components/login-button";
@@ -25,13 +30,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import axios from "axios";
 import { toast } from "sonner";
-import { 
-  Collapsible, 
-  CollapsibleContent, 
-  CollapsibleTrigger 
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+
+// Import CreateClassModal
+import { CreateClassModal } from "../(routes)/classes/_components/create-class-modal";
+import { Button } from "@/components/ui/button";
 
 // Define interfaces
 interface ClassData {
@@ -50,7 +59,7 @@ interface UserData {
   _id: string;
   name: string;
   email: string;
-  role: 'student' | 'admin' | 'instructor';
+  role: "student" | "admin" | "instructor";
 }
 
 export default function Navigation() {
@@ -62,17 +71,20 @@ export default function Navigation() {
   const navbarRef = useRef<ComponentRef<"div">>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(isMobile);
-  
+
   // User authentication states
   const [role, setRole] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
-  
+
   // Classes states
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [classesOpen, setClassesOpen] = useState(true);
-  
+
+  // Modal state for creating class
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
   // Extract user data on component mount
   useEffect(() => {
     const getUserData = async () => {
@@ -84,21 +96,26 @@ export default function Navigation() {
           setRole(null);
           return;
         }
-        
+
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/me`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` } },
         );
-        
+
         const user = response.data.data;
         setUserData(user);
         setRole(user.role);
-        
+
         // Store role in localStorage
         localStorage.setItem("role", user.role);
-        
+
         // If user is logged in, fetch their classes
-        if (user && (user.role === 'admin' || user.role === 'instructor' || user.role === 'student')) {
+        if (
+          user &&
+          (user.role === "admin" ||
+            user.role === "instructor" ||
+            user.role === "student")
+        ) {
           fetchClasses();
         }
       } catch (err) {
@@ -111,7 +128,7 @@ export default function Navigation() {
     };
 
     getUserData();
-    
+
     const handleStorageChange = () => {
       const storedRole = localStorage.getItem("role");
       setRole(storedRole);
@@ -130,12 +147,12 @@ export default function Navigation() {
         setClasses([]);
         return;
       }
-      
+
       const response = await axios.get(
         `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/my-classes`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
-      
+
       setClasses(response.data.data || []);
     } catch (err) {
       console.error("Failed to fetch classes for navigation:", err);
@@ -160,7 +177,7 @@ export default function Navigation() {
   }, [pathname, isMobile]);
 
   const handleMouseDown = (
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>
+    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
   ) => {
     event.preventDefault();
     event.stopPropagation();
@@ -182,7 +199,7 @@ export default function Navigation() {
       navbarRef.current.style.setProperty("left", `${newWidth}px`);
       navbarRef.current.style.setProperty(
         "width",
-        `calc(100% - ${newWidth}px)`
+        `calc(100% - ${newWidth}px)`,
       );
     }
   };
@@ -200,7 +217,7 @@ export default function Navigation() {
       sidebarRef.current.style.width = isMobile ? "100%" : "240px";
       navbarRef.current.style.setProperty(
         "width",
-        isMobile ? "0" : "calc(100% - 240px)"
+        isMobile ? "0" : "calc(100% - 240px)",
       );
       navbarRef.current.style.setProperty("left", isMobile ? "0" : "240px");
       setTimeout(() => {
@@ -208,7 +225,43 @@ export default function Navigation() {
       }, 300);
     }
   };
-
+  const [error, setError] = useState<string | null>(null);
+  // --- Fetching Logic (mostly unchanged) ---
+  const getAllClasses = useCallback(async (showLoading = true) => {
+    // ... (keep existing getAllClasses logic)
+    if (showLoading) setIsLoadingClasses(true);
+    // setError(null); // Clear previous *page level* errors related to fetching classes
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setClasses([]);
+        return;
+      }
+      const response = await axios.get<{ data: ClassData[] }>(
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/my-classes`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setClasses(response.data.data || []);
+    } catch (err: any) {
+      console.error("Failed to fetch classes:", err);
+      let errorMessage = "Failed to load classes.";
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        errorMessage = "Your session might have expired. Please log in again.";
+      } else if (axios.isAxiosError(err) && err.response) {
+        errorMessage =
+          err.response.data?.message || `Error ${err.response.status}`;
+      } else if (axios.isAxiosError(err) && err.request) {
+        errorMessage = "Network error fetching classes.";
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage); // Set page-level error
+      toast.error(errorMessage);
+      setClasses([]);
+    } finally {
+      if (showLoading) setIsLoadingClasses(false);
+    }
+  }, []);
   const collapse = () => {
     if (sidebarRef.current && navbarRef.current) {
       setIsCollapsed(true);
@@ -239,7 +292,7 @@ export default function Navigation() {
           "group/sidebar h-full bg-secondary/50 backdrop-blur-sm border-r overflow-y-auto relative flex w-60 flex-col z-10 shadow-sm",
           isMobile && "w-0",
           isResetting && "transition-all duration-300 ease-in-out",
-          isCollapsed && "transition-all duration-300 ease-in-out"
+          isCollapsed && "transition-all duration-300 ease-in-out",
         )}
       >
         <div
@@ -247,7 +300,7 @@ export default function Navigation() {
           onClick={collapse}
           className={cn(
             "h-6 w-6 text-muted-foreground rounded-sm hover:bg-neutral-300 dark:hover:bg-neutral-600 absolute top-3 right-2 opacity-0 group-hover/sidebar:opacity-100 transition",
-            isMobile && "opacity-100"
+            isMobile && "opacity-100",
           )}
         >
           <ChevronsLeftIcon className="h-6 w-6" />
@@ -271,42 +324,45 @@ export default function Navigation() {
         {/* Navigation items */}
         <div className="flex-1 px-3 py-2">
           <div className="space-y-1">
-           
             {/* Classes main menu item for instructors and admins */}
-            {(role === "instructor" || role === "admin" || role === '"instructor"' || role === '"admin"') && (
+            {(role === '"instructor"' || role === '"admin"') && (
               <Link href="/classes" className="block">
-                <SidebarItem 
-                  label="Classes" 
-                  icon={School} 
+                <SidebarItem
+                  label="Classes"
+                  icon={School}
                   className={cn(
                     "transition-colors hover:bg-accent hover:text-accent-foreground",
-                    pathname === "/classes" && "bg-accent text-accent-foreground"
+                    pathname === "/classes" &&
+                      "bg-accent text-accent-foreground",
                   )}
                 />
               </Link>
             )}
-            
+
             {/* Classes dropdown list */}
-            {(role === "instructor" || role === "admin" || role === "student" || 
-              role === '"instructor"' || role === '"admin"' || role === '"student"') && (
-              <Collapsible 
-                open={classesOpen} 
+            {(role === "instructor" || role === "admin") && (
+              <Collapsible
+                open={classesOpen}
                 onOpenChange={setClassesOpen}
                 className="w-full"
               >
                 <CollapsibleTrigger asChild>
-                  <div className={cn(
-                    "flex items-center justify-between p-2 rounded-md cursor-pointer",
-                    "transition-colors hover:bg-accent hover:text-accent-foreground"
-                  )}>
+                  <div
+                    className={cn(
+                      "flex items-center justify-between p-2 rounded-md cursor-pointer",
+                      "transition-colors hover:bg-accent hover:text-accent-foreground",
+                    )}
+                  >
                     <div className="flex items-center gap-2">
                       <BookOpen className="h-4 w-4" />
                       <span className="truncate">My Classes</span>
                     </div>
-                    <ChevronDown className={cn(
-                      "h-4 w-4 transition-transform duration-200",
-                      classesOpen && "transform rotate-180"
-                    )} />
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 transition-transform duration-200",
+                        classesOpen && "transform rotate-180",
+                      )}
+                    />
                   </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-1 pl-6 mt-1">
@@ -322,38 +378,53 @@ export default function Navigation() {
                     </div>
                   ) : (
                     classes.map((classItem) => (
-                      <Link 
-                        href={`/classes/${classItem._id}`} 
+                      <Link
+                        href={`/classes/${classItem._id}`}
                         key={classItem._id}
                         className="block"
                       >
-                        <div className={cn(
-                          "flex items-center p-2 text-sm rounded-md",
-                          "transition-colors hover:bg-accent hover:text-accent-foreground",
-                          pathname === `/classes/${classItem._id}` && "bg-accent/50 text-accent-foreground"
-                        )}>
+                        <div
+                          className={cn(
+                            "flex items-center p-2 text-sm rounded-md",
+                            "transition-colors hover:bg-accent hover:text-accent-foreground",
+                            pathname === `/classes/${classItem._id}` &&
+                              "bg-accent/50 text-accent-foreground",
+                          )}
+                        >
                           <span className="truncate">{classItem.name}</span>
                           {classItem.status === "active" ? (
-                            <Badge variant="default" className="ml-auto text-[10px] h-4 px-1">Active</Badge>
+                            <Badge
+                              variant="default"
+                              className="ml-auto text-[10px] h-4 px-1"
+                            >
+                              Active
+                            </Badge>
                           ) : (
-                            <Badge variant="secondary" className="ml-auto text-[10px] h-4 px-1">Inactive</Badge>
+                            <Badge
+                              variant="secondary"
+                              className="ml-auto text-[10px] h-4 px-1"
+                            >
+                              Inactive
+                            </Badge>
                           )}
                         </div>
                       </Link>
                     ))
                   )}
-                  
+
                   {/* Create new class button for admin/instructor */}
-                  {(role === "admin" || role === "instructor" || role === '"admin"' || role === '"instructor"') && (
-                    <Link href="/classes" className="block">
-                      <div className={cn(
-                        "flex items-center gap-1 p-2 text-sm rounded-md",
-                        "transition-colors hover:bg-accent/50 text-muted-foreground hover:text-accent-foreground"
-                      )}>
-                        <PlusCircle className="h-3 w-3" />
-                        <span className="truncate">New Class</span>
-                      </div>
-                    </Link>
+                  {(role === "admin" || role === "instructor") && (
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "flex items-center cursor-pointer gap-1 p-2 text-sm rounded-md w-full justify-start",
+                        "transition-colors hover:bg-accent/50 text-muted-foreground hover:text-accent-foreground",
+                      )}
+                      onClick={() => setIsCreateModalOpen(true)}
+                    >
+                      <PlusCircle className="h-3 w-3" />
+                      <span className="truncate">New Class</span>
+                    </Button>
                   )}
                 </CollapsibleContent>
               </Collapsible>
@@ -363,37 +434,42 @@ export default function Navigation() {
             {(role === "student" || role === '"student"') && (
               <>
                 <Link href="/scan" className="block">
-                  <SidebarItem 
-                    label="Scan QR Code" 
-                    icon={Scan} 
+                  <SidebarItem
+                    label="Scan QR Code"
+                    icon={Scan}
                     className={cn(
                       "transition-colors hover:bg-accent hover:text-accent-foreground",
-                      pathname === "/scan" && "bg-accent text-accent-foreground"
+                      pathname === "/scan" &&
+                        "bg-accent text-accent-foreground",
                     )}
                   />
                 </Link>
                 <Link href="/student-attendance" className="block">
-                  <SidebarItem 
-                    label="Attendance" 
-                    icon={AlertCircle} 
+                  <SidebarItem
+                    label="Attendance"
+                    icon={AlertCircle}
                     className={cn(
                       "transition-colors hover:bg-accent hover:text-accent-foreground",
-                      pathname === "/student-attendance" && "bg-accent text-accent-foreground"
+                      pathname === "/student-attendance" &&
+                        "bg-accent text-accent-foreground",
                     )}
                   />
                 </Link>
               </>
             )}
+            {(role === "admin" || role === "instructor") && (
               <Link href="/register" className="block">
-                  <SidebarItem 
-                    label="Add Users" 
-                    icon={Users} 
-                    className={cn(
-                      "transition-colors hover:bg-accent hover:text-accent-foreground",
-                      pathname === "/register" && "bg-accent text-accent-foreground"
-                    )}
-                  />
-                </Link>
+                <SidebarItem
+                  label="Add Users"
+                  icon={Users}
+                  className={cn(
+                    "transition-colors hover:bg-accent hover:text-accent-foreground",
+                    pathname === "/register" &&
+                      "bg-accent text-accent-foreground",
+                  )}
+                />
+              </Link>
+            )}
           </div>
         </div>
 
@@ -404,7 +480,11 @@ export default function Navigation() {
               <Avatar className="h-8 w-8">
                 <AvatarImage src="/avatar.png" alt="User" />
                 <AvatarFallback>
-                  {userData?.name ? userData.name.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
+                  {userData?.name ? (
+                    userData.name.charAt(0).toUpperCase()
+                  ) : (
+                    <User className="h-4 w-4" />
+                  )}
                 </AvatarFallback>
               </Avatar>
               <div className="text-sm">
@@ -413,7 +493,9 @@ export default function Navigation() {
                 ) : userData ? (
                   <div>
                     <p className="font-medium">{userData.name}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{role?.replace(/"/g, '')}</p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {role?.replace(/"/g, "")}
+                    </p>
                   </div>
                 ) : (
                   <p className="font-medium">Guest</p>
@@ -421,16 +503,12 @@ export default function Navigation() {
               </div>
             </div>
             {userData ? (
-              <LoginButton 
-                variant="ghost" 
-                size="sm"
-                onClick={handleLogout}
-              />
+              <LoginButton variant="ghost" size="sm" onClick={handleLogout} />
             ) : (
-              <LoginButton 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => router.push('/login')}
+              <LoginButton
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/login")}
               />
             )}
           </div>
@@ -450,10 +528,10 @@ export default function Navigation() {
         className={cn(
           "absolute top-0 left-60 w-[calc(100%-240px)]",
           isResetting && "transition-all ease-in-out duration-300",
-          isMobile && "left-0 w-full"
+          isMobile && "left-0 w-full",
         )}
       >
-        <nav className="bg-background/50 backdrop-blur-sm px-3 py-2 w-full border-b flex items-center h-14 z[100]">
+        <nav className="bg-background/50 z-[500] backdrop-blur-sm px-3 py-2 w-full border-b flex items-center h-14 z[100]">
           {isCollapsed && (
             <MenuIcon
               onClick={resetWidth}
@@ -463,14 +541,26 @@ export default function Navigation() {
           )}
           <div className="ml-4 font-medium">
             {/* Dynamic page title */}
-            {pathname === "/classes" ? "Classes" : 
-             pathname === "/scan" ? "Scan QR Code" : 
-             pathname === "/student-attendance" ? "Attendance" :
-             pathname.startsWith("/classes/") ? "Class Details" : 
-             "Dashboard"}
+            {pathname === "/classes"
+              ? "Classes"
+              : pathname === "/scan"
+                ? "Scan QR Code"
+                : pathname === "/student-attendance"
+                  ? "Attendance"
+                  : pathname.startsWith("/classes/")
+                    ? "Class Details"
+                    : "Dashboard"}
           </div>
         </nav>
       </div>
+
+      {/* CreateClassModal - available for admin/instructor */}
+      <CreateClassModal
+        isOpen={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        onClassCreated={() => fetchClasses()} // Refresh classes in sidebar after creation
+        teacherId={userData?._id ?? null}
+      />
     </>
   );
 }

@@ -34,12 +34,11 @@ export default function Login() {
     if (token) {
       // Redirect to home if already logged in
       setTimeout(() => {
-        if (localStorage.getItem('role') !== '"student"') {
+        if (localStorage.getItem("role") !== '"student"') {
           router.push("/classes");
-          }
-          else {
-            router.push("/scan");
-          }
+        } else {
+          router.push("/scan");
+        }
         setIsCheckingAuth(false);
       }, 500);
     } else {
@@ -49,7 +48,7 @@ export default function Login() {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    
+
     // Form validation
     if (!email.trim()) {
       setError("Email is required");
@@ -68,13 +67,12 @@ export default function Login() {
       if (res) {
         toast.success("Login successful! Redirecting...");
         setTimeout(() => {
-          if (localStorage.getItem('role') !== '"student"') {
-          router.push("/classes");
-          }
-          else {
+          if (localStorage.getItem("role") !== '"student"') {
+            router.push("/classes");
+          } else {
             router.push("/scan");
           }
-        }, 1000);
+        }, 100);
       } else {
         setError("Invalid credentials. Please try again.");
       }
@@ -125,7 +123,9 @@ export default function Login() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email address
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -142,9 +142,11 @@ export default function Login() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-                  <Link 
-                    href="/forgot-password" 
+                  <Label htmlFor="password" className="text-sm font-medium">
+                    Password
+                  </Label>
+                  <Link
+                    href="/forgot-password"
                     className="text-xs text-primary hover:text-primary/90 underline-offset-4 hover:underline"
                   >
                     Forgot password?
@@ -170,11 +172,7 @@ export default function Login() {
             </CardContent>
 
             <CardFooter className="flex flex-col space-y-4 pt-2">
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -187,8 +185,8 @@ export default function Login() {
 
               <p className="text-sm text-center text-muted-foreground">
                 Don&apos;t have an account?{" "}
-                <Link 
-                  href="/register" 
+                <Link
+                  href="/register"
                   className="font-medium text-primary hover:text-primary/90 underline-offset-4 hover:underline"
                 >
                   Register

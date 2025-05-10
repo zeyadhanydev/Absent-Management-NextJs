@@ -16,7 +16,6 @@ import {
 import { ArrowUpDown, ChevronDown, Trash2, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -46,10 +45,17 @@ interface StudentsDataTableProps {
   onRemoveStudent: (studentId: string) => Promise<void>;
 }
 
-export default  function StudentsGrid({ students, canManage, onRemoveStudent }: StudentsDataTableProps) {
+export default function StudentsGrid({
+  students,
+  canManage,
+  onRemoveStudent,
+}: StudentsDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    [],
+  );
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [isRemoving, setIsRemoving] = React.useState<string | null>(null);
 
@@ -57,95 +63,82 @@ export default  function StudentsGrid({ students, canManage, onRemoveStudent }: 
     setIsRemoving(studentId);
     try {
       await onRemoveStudent(studentId);
-      // Optionally, refetch data or update local state after removal
     } finally {
       setIsRemoving(null);
     }
   };
 
-  const columns: ColumnDef<Student>[] = React.useMemo(() => [
-    // Optional: Select column if needed
-    // {
-    //   id: "select",
-    //   header: ({ table }) => (
-    //     <Checkbox
-    //       checked={
-    //         table.getIsAllPageRowsSelected() ||
-    //         (table.getIsSomePageRowsSelected() && "indeterminate")
-    //       }
-    //       onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-    //       aria-label="Select all"
-    //     />
-    //   ),
-    //   cell: ({ row }) => (
-    //     <Checkbox
-    //       checked={row.getIsSelected()}
-    //       onCheckedChange={(value) => row.toggleSelected(!!value)}
-    //       aria-label="Select row"
-    //     />
-    //   ),
-    //   enableSorting: false,
-    //   enableHiding: false,
-    // },
-    {
-      accessorKey: "name",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
-    },
-    {
-      accessorKey: "studentId",
-      header: "Student ID",
-      cell: ({ row }) => <div>{row.getValue("studentId")}</div>,
-    },
-    {
-      accessorKey: "email",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Email
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
-    },
-    ...(canManage ? [{
-      id: "actions",
-      enableHiding: false,
-      header: () => <div className="text-right">Actions</div>,
-      cell: ({ row }: { row: { original: Student } }) => {
-        const student = row.original;
-
-        return (
-          <div className="text-right">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-destructive"
-              onClick={() => handleRemoveClick(student._id)}
-              disabled={isRemoving === student._id}
-              aria-label="Remove student"
-            >
-              {isRemoving === student._id ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        );
+  const columns: ColumnDef<Student>[] = React.useMemo(
+    () => [
+      {
+        accessorKey: "name",
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Name
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <div className="font-medium">{row.getValue("name")}</div>
+        ),
       },
-    }] : []),
-  ], [canManage, onRemoveStudent, isRemoving]); // Include dependencies
+      {
+        accessorKey: "studentId",
+        header: "Student ID",
+        cell: ({ row }) => <div>{row.getValue("studentId")}</div>,
+      },
+      {
+        accessorKey: "email",
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Email
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <div className="lowercase">{row.getValue("email")}</div>
+        ),
+      },
+      ...(canManage
+        ? [
+            {
+              id: "actions",
+              enableHiding: false,
+              header: () => <div className="text-right">Actions</div>,
+              cell: ({ row }: { row: { original: Student } }) => {
+                const student = row.original;
+
+                return (
+                  <div className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => handleRemoveClick(student._id)}
+                      disabled={isRemoving === student._id}
+                      aria-label="Remove student"
+                    >
+                      {isRemoving === student._id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                );
+              },
+            },
+          ]
+        : []),
+    ],
+    [canManage, onRemoveStudent, isRemoving],
+  );
 
   const table = useReactTable({
     data: students,
@@ -165,16 +158,18 @@ export default  function StudentsGrid({ students, canManage, onRemoveStudent }: 
       rowSelection,
     },
     initialState: {
-        pagination: {
-            pageSize: 10, // Set default page size
-        }
-    }
+      pagination: {
+        pageSize: 10,
+      },
+    },
   });
 
-  if (students.length === 0 && !canManage) { // Show only if not manageable and empty
+  if (students.length === 0 && !canManage) {
     return (
       <div className="text-center py-10 border rounded-md bg-muted/20">
-        <p className="text-muted-foreground">No students enrolled in this class.</p>
+        <p className="text-muted-foreground">
+          No students enrolled in this class.
+        </p>
       </div>
     );
   }
@@ -205,11 +200,9 @@ export default  function StudentsGrid({ students, canManage, onRemoveStudent }: 
                   key={column.id}
                   className="capitalize"
                   checked={column.getIsVisible()}
-                  onCheckedChange={(value) =>
-                    column.toggleVisibility(!!value)
-                  }
+                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
                 >
-                  {column.id === 'studentId' ? 'Student ID' : column.id}
+                  {column.id === "studentId" ? "Student ID" : column.id}
                 </DropdownMenuCheckboxItem>
               ))}
           </DropdownMenuContent>
@@ -226,7 +219,7 @@ export default  function StudentsGrid({ students, canManage, onRemoveStudent }: 
                       ? null
                       : flexRender(
                           header.column.columnDef.header,
-                          header.getContext()
+                          header.getContext(),
                         )}
                   </TableHead>
                 ))}
@@ -244,7 +237,7 @@ export default  function StudentsGrid({ students, canManage, onRemoveStudent }: 
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}
@@ -264,13 +257,9 @@ export default  function StudentsGrid({ students, canManage, onRemoveStudent }: 
         </Table>
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
-        {/* Optional: Row selection count */}
-        {/* <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div> */}
         <div className="flex-1 text-sm text-muted-foreground">
-            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          Page {table.getState().pagination.pageIndex + 1} of{" "}
+          {table.getPageCount()}
         </div>
         <div className="space-x-2">
           <Button
@@ -294,6 +283,3 @@ export default  function StudentsGrid({ students, canManage, onRemoveStudent }: 
     </div>
   );
 }
-
-// Export the component if needed elsewhere, adjust name as necessary
-// export default StudentsDataTable;

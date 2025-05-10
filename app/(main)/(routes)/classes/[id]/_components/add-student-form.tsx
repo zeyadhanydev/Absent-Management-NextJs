@@ -42,7 +42,7 @@ interface AddStudentFormProps {
 
 export default function AddStudentForm({ classData, onAddStudent }: AddStudentFormProps) {
   const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [open, setOpen] = useState(false);
@@ -81,14 +81,14 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
   };
 
   const handleAddStudent = async () => {
-    if (!selectedStudentId) return;
+    if (selectedStudentIds.length === 0) return;
     
     setIsAdding(true);
     try {
-      await onAddStudent([selectedStudentId]);
+      await onAddStudent(selectedStudentIds);
       
       // Reset selection
-      setSelectedStudentId('');
+      setSelectedStudentIds([]);
       setOpen(false);
       
       // Refresh available students
@@ -99,6 +99,23 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
     } finally {
       setIsAdding(false);
     }
+  };
+
+  const toggleStudentSelection = (studentId: string) => {
+    setSelectedStudentIds(prev => 
+      prev.includes(studentId) 
+        ? prev.filter(id => id !== studentId) 
+        : [...prev, studentId]
+    );
+  };
+
+  const selectAllStudents = () => {
+    const allStudentIds = availableStudents.map(student => student._id);
+    setSelectedStudentIds(allStudentIds);
+  };
+
+  const clearSelection = () => {
+    setSelectedStudentIds([]);
   };
 
   return (
@@ -131,15 +148,38 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
                     className="w-full sm:w-[350px] justify-between"
                     disabled={isAdding || availableStudents.length === 0}
                   >
-                    {selectedStudentId ? 
-                      availableStudents.find(student => student._id === selectedStudentId)?.name || "Select student" : 
-                      availableStudents.length === 0 ? "No students available" : "Select student to add"}
+                    {selectedStudentIds.length > 0 ? 
+                      `${selectedStudentIds.length} student${selectedStudentIds.length > 1 ? 's' : ''} selected` : 
+                      availableStudents.length === 0 ? "No students available" : "Select students to add"}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[350px] p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Search student..." />
+                    <div className="flex items-center justify-between p-2 border-b">
+                      <CommandInput placeholder="Search student..." />
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={selectAllStudents}
+                          disabled={availableStudents.length === 0}
+                          className="h-7 px-2 text-xs"
+                        >
+                          Select All
+                        </Button>
+                        {selectedStudentIds.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearSelection}
+                            className="h-7 px-2 text-xs"
+                          >
+                            Clear
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                     <CommandList className="max-h-[300px] overflow-auto">
                       <CommandEmpty>No student found.</CommandEmpty>
                       <CommandGroup>
@@ -148,14 +188,13 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
                             key={student._id}
                             value={`${student.name} ${student.studentId}`}
                             onSelect={() => {
-                              setSelectedStudentId(student._id === selectedStudentId ? "" : student._id);
-                              setOpen(false);
+                              toggleStudentSelection(student._id);
                             }}
                           >
                             <Check
                               className={cn(
                                 "mr-2 h-4 w-4",
-                                selectedStudentId === student._id ? "opacity-100" : "opacity-0"
+                                selectedStudentIds.includes(student._id) ? "opacity-100" : "opacity-0"
                               )}
                             />
                             <div className="flex flex-col">
@@ -171,11 +210,11 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
               </Popover>
               <Button 
                 onClick={handleAddStudent} 
-                disabled={!selectedStudentId || isAdding}
+                disabled={selectedStudentIds.length === 0 || isAdding}
                 className="w-full sm:w-auto"
               >
                 {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                Add to Class
+                Add {selectedStudentIds.length > 0 ? `${selectedStudentIds.length} Student${selectedStudentIds.length > 1 ? 's' : ''}` : 'to Class'}
               </Button>
             </>
           )}

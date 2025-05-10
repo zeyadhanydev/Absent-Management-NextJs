@@ -98,55 +98,77 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
     }
   };
 
+  // Form submission handler to create class on Enter key press
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleCreate();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-w-[95vw] w-full">
         <DialogHeader>
           <DialogTitle>Create New Class</DialogTitle>
           <DialogDescription>
             Fill in the details below to create a new class.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
+        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-left sm:text-right">
               Name
             </Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="col-span-3"
+              className="col-span-1 sm:col-span-3"
               placeholder="e.g., Introduction to Programming"
               disabled={isLoading}
             />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="semester" className="text-right">
+          <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+            <Label htmlFor="semester" className="text-left sm:text-right">
               Semester
             </Label>
             <Input
               id="semester"
               value={semester}
               onChange={(e) => setSemester(e.target.value)}
-              className="col-span-3"
+              className="col-span-1 sm:col-span-3"
               placeholder="e.g., Fall 2024"
               disabled={isLoading}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleCreate();
+                }
+              }}
             />
           </div>
           {error && (
              <p className="col-span-4 text-sm text-red-600 dark:text-red-500 text-center">{error}</p>
           )}
-        </div>
-        <DialogFooter>
+        </form>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
            {/* Use DialogClose for the Cancel button */}
            <DialogClose asChild>
-             <Button type="button" variant="outline" disabled={isLoading}>
+             <Button 
+               type="button" 
+               variant="outline" 
+               disabled={isLoading}
+               className="w-full sm:w-auto"
+             >
                Cancel
              </Button>
            </DialogClose>
-          <Button type="button" onClick={handleCreate} disabled={isLoading}>
-            {isLoading ? <Spinner size="sm"/> : null}
+          <Button 
+            type="submit" 
+            onClick={handleCreate} 
+            disabled={isLoading}
+            className="w-full sm:w-auto"
+          >
+            {isLoading ? <Spinner size="sm" className="mr-2"/> : null}
             {isLoading ? 'Creating...' : 'Create Class'}
           </Button>
         </DialogFooter>

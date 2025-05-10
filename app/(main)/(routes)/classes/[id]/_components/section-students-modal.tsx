@@ -77,7 +77,7 @@ export default function SectionStudentsModal({
 }: SectionStudentsModalProps) {
   const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
   const [sectionStudents, setSectionStudents] = useState<Student[]>(section.students || []);
-  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [removingStudentId, setRemovingStudentId] = useState<string | null>(null);
@@ -119,7 +119,7 @@ export default function SectionStudentsModal({
   };
 
   const handleAddStudent = async () => {
-    if (!selectedStudentId) return;
+    if (selectedStudentIds.length === 0) return;
     
     setIsUpdating(true);
     try {
@@ -133,24 +133,26 @@ export default function SectionStudentsModal({
         `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/sections/add-students`,
         {
           sectionId: section._id,
-          studentIds: [selectedStudentId]
+          studentIds: selectedStudentIds
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      // Find the added student from availableStudents and add to sectionStudents
-      const addedStudent = availableStudents.find(s => s._id === selectedStudentId);
-      if (addedStudent) {
-        setSectionStudents(prev => [...prev, addedStudent]);
-        // Remove the student from available students
-        setAvailableStudents(prev => prev.filter(s => s._id !== selectedStudentId));
+      // Find the added students from availableStudents and add to sectionStudents
+      const addedStudents = availableStudents.filter(s => selectedStudentIds.includes(s._id));
+      if (addedStudents.length > 0) {
+        setSectionStudents(prev => [...prev, ...addedStudents]);
+        // Remove the students from available students
+        setAvailableStudents(prev => 
+          prev.filter(s => !selectedStudentIds.includes(s._id))
+        );
       }
       
       // Reset selection
-      setSelectedStudentId('');
+      setSelectedStudentIds([]);
       setOpen(false);
       
-      toast.success('Student added to section');
+      toast.success(`${addedStudents.length} student(s) added to section`);
     } catch (error) {
       console.error('Failed to add student to section', error);
       toast.error('Failed to add student to section');
@@ -223,9 +225,9 @@ export default function SectionStudentsModal({
                     disabled={isLoading || isUpdating || availableStudents.length === 0}
                   >
                     {isLoading ? "Loading students..." : 
-                     selectedStudentId ? 
-                     availableStudents.find(student => student._id === selectedStudentId)?.name || "Select student" : 
-                     availableStudents.length === 0 ? "No students available" : "Select student"}
+                     selectedStudentIds.length > 0 ? 
+                     `${selectedStudentIds.length} student(s) selected` : 
+                     availableStudents.length === 0 ? "No students available" : "Select students"}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -235,19 +237,44 @@ export default function SectionStudentsModal({
                     <CommandList className="max-h-[300px] overflow-auto">
                       <CommandEmpty>No student found.</CommandEmpty>
                       <CommandGroup>
+                        <div className="flex items-center justify-between px-2 py-1.5 border-b">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs h-7 px-2"
+                            onClick={() => setSelectedStudentIds(availableStudents.map(s => s._id))}
+                            disabled={availableStudents.length === 0}
+                          >
+                            Select All
+                          </Button>
+                          {selectedStudentIds.length > 0 && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-xs h-7 px-2"
+                              onClick={() => setSelectedStudentIds([])}
+                            >
+                              Clear
+                            </Button>
+                          )}
+                        </div>
                         {availableStudents.map((student) => (
                           <CommandItem
                             key={student._id}
                             value={`${student.name} ${student.studentId}`}
                             onSelect={() => {
-                              setSelectedStudentId(student._id === selectedStudentId ? "" : student._id);
-                              setOpen(false);
+                              setSelectedStudentIds(prev => 
+                                prev.includes(student._id) 
+                                  ? prev.filter(id => id !== student._id) 
+                                  : [...prev, student._id]
+                              );
+                              // Keep the popover open for multi-selection
                             }}
                           >
                             <Check
                               className={cn(
                                 "mr-2 h-4 w-4",
-                                selectedStudentId === student._id ? "opacity-100" : "opacity-0"
+                                selectedStudentIds.includes(student._id) ? "opacity-100" : "opacity-0"
                               )}
                             />
                             <div className="flex flex-col">
@@ -263,11 +290,11 @@ export default function SectionStudentsModal({
               </Popover>
               <Button 
                 onClick={handleAddStudent} 
-                disabled={!selectedStudentId || isUpdating || isLoading}
+                disabled={selectedStudentIds.length === 0 || isUpdating || isLoading}
                 className="w-full sm:w-auto"
               >
                 {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Add to Section
+                Add {selectedStudentIds.length > 0 ? `${selectedStudentIds.length} Student(s)` : ''} to Section
               </Button>
             </div>
           )}
