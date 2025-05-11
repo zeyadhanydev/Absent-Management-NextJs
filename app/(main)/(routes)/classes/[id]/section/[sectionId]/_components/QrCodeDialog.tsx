@@ -59,7 +59,7 @@ export default function QrCodeDialog({
           `${minutes}m ${seconds < 10 ? "0" : ""}${seconds}s remaining`,
         );
       } catch (e) {
-        console.error("Error parsing expiresAt date:", e);
+        // console.error("Error parsing expiresAt date:", e);
         setTimeLeft("Invalid date");
         setIsExpired(true); // Treat invalid date as expired
         clearInterval(interval);

@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import axios from 'axios';
-import React, { useEffect, useState, useCallback } from 'react';
-import { ClassCard } from './_components/class-card';
-import { CreateClassModal } from './_components/create-class-modal';
-import { DeleteConfirmationModal } from './_components/delete-confirmation-modal'; // Import delete modal
-import { Spinner } from '@/components/spinner';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { PlusCircle } from 'lucide-react';
+import axios from "axios";
+import React, { useEffect, useState, useCallback } from "react";
+import { ClassCard } from "./_components/class-card";
+import { CreateClassModal } from "./_components/create-class-modal";
+import { DeleteConfirmationModal } from "./_components/delete-confirmation-modal"; // Import delete modal
+import { Spinner } from "@/components/spinner";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { PlusCircle } from "lucide-react";
 
 // Define the Class interface
 interface ClassData {
@@ -25,10 +25,10 @@ interface ClassData {
 
 // Define the User interface
 interface UserData {
-    _id: string;
-    name: string;
-    email: string;
-    role: 'student' | 'admin' | 'instructor';
+  _id: string;
+  name: string;
+  email: string;
+  role: "student" | "admin" | "instructor";
 }
 
 export default function ClassesPage() {
@@ -41,47 +41,51 @@ export default function ClassesPage() {
 
   // State for delete confirmation
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [classToDelete, setClassToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [classToDelete, setClassToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   // --- Fetching Logic (mostly unchanged) ---
   const getAllClasses = useCallback(async (showLoading = true) => {
     // ... (keep existing getAllClasses logic)
-     if (showLoading) setIsLoadingClasses(true);
-     // setError(null); // Clear previous *page level* errors related to fetching classes
-     try {
-       const token = localStorage.getItem("token");
-       if (!token) {
-         setClasses([]);
-         return;
-       }
-       const response = await axios.get<{ data: ClassData[] }>(
-         `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/my-classes`,
-         { headers: { Authorization: `Bearer ${token}` } }
-       );
-       setClasses(response.data.data || []);
-     } catch (err: any) {
-       console.error("Failed to fetch classes:", err);
-       let errorMessage = "Failed to load classes.";
-        if (axios.isAxiosError(err) && err.response?.status === 401) {
-            errorMessage = "Your session might have expired. Please log in again.";
-        } else if (axios.isAxiosError(err) && err.response) {
-          errorMessage = err.response.data?.message || `Error ${err.response.status}`;
-        } else if (axios.isAxiosError(err) && err.request) {
-          errorMessage = "Network error fetching classes.";
-        } else if (err instanceof Error) {
-          errorMessage = err.message;
-        }
-       setError(errorMessage); // Set page-level error
-       toast.error(errorMessage);
-       setClasses([]);
-     } finally {
-       if (showLoading) setIsLoadingClasses(false);
-     }
+    if (showLoading) setIsLoadingClasses(true);
+    // setError(null); // Clear previous *page level* errors related to fetching classes
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setClasses([]);
+        return;
+      }
+      const response = await axios.get<{ data: ClassData[] }>(
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/my-classes`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setClasses(response.data.data || []);
+    } catch (err: any) {
+      // console.error("Failed to fetch classes:", err);
+      let errorMessage = "Failed to load classes.";
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        errorMessage = "Your session might have expired. Please log in again.";
+      } else if (axios.isAxiosError(err) && err.response) {
+        errorMessage =
+          err.response.data?.message || `Error ${err.response.status}`;
+      } else if (axios.isAxiosError(err) && err.request) {
+        errorMessage = "Network error fetching classes.";
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage); // Set page-level error
+      toast.error(errorMessage);
+      setClasses([]);
+    } finally {
+      if (showLoading) setIsLoadingClasses(false);
+    }
   }, []);
 
   useEffect(() => {
     const getUserData = async () => {
-    // ... (keep existing getUserData logic)
+      // ... (keep existing getUserData logic)
       setIsUserDataLoading(true);
       try {
         const token = localStorage.getItem("token");
@@ -91,11 +95,11 @@ export default function ClassesPage() {
         }
         const response = await axios.get<{ data: UserData }>(
           `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/me`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         setUserData(response.data.data);
       } catch (err) {
-        console.error("Failed to fetch user data:", err);
+        // console.error("Failed to fetch user data:", err);
         setUserData(null);
       } finally {
         setIsUserDataLoading(false);
@@ -115,8 +119,8 @@ export default function ClassesPage() {
   const handleConfirmDelete = async (classId: string): Promise<void> => {
     const token = localStorage.getItem("token");
     if (!token) {
-        toast.error("Authentication token not found. Please log in again.");
-        throw new Error("Authentication token not found."); 
+      toast.error("Authentication token not found. Please log in again.");
+      throw new Error("Authentication token not found.");
     }
 
     try {
@@ -127,42 +131,50 @@ export default function ClassesPage() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          data: { 
+          data: {
             classId: classId,
-          }
-        }
+          },
+        },
       );
 
       if (response.status === 200 || response.status === 204) {
-        toast.success(`Class "${classToDelete?.name || 'Class'}" deleted successfully!`);
-        await getAllClasses(false); 
-        setClassToDelete(null); 
+        toast.success(
+          `Class "${classToDelete?.name || "Class"}" deleted successfully!`,
+        );
+        await getAllClasses(false);
+        setClassToDelete(null);
       } else {
-         throw new Error(response.data?.message || `Failed to delete class (Status: ${response.status})`);
+        throw new Error(
+          response.data?.message ||
+            `Failed to delete class (Status: ${response.status})`,
+        );
       }
     } catch (err: any) {
-      console.error("Failed to delete class:", err);
+      // console.error("Failed to delete class:", err);
       let errorMessage = "Failed to delete class. Please try again later.";
-       if (axios.isAxiosError(err) && err.response) {
-         errorMessage = err.response.data?.message || `Error ${err.response.status}`;
-       } else if (err instanceof Error) {
-         errorMessage = err.message;
-       }
+      if (axios.isAxiosError(err) && err.response) {
+        errorMessage =
+          err.response.data?.message || `Error ${err.response.status}`;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
       toast.error(errorMessage);
-      setClassToDelete(null); 
-      throw err; 
+      setClassToDelete(null);
+      throw err;
     }
   };
   // --- End Delete Logic ---
 
-
-  const canCreateClass = !isUserDataLoading && userData && (userData.role === 'admin' || userData.role === 'instructor');
+  const canCreateClass =
+    !isUserDataLoading &&
+    userData &&
+    (userData.role === "admin" || userData.role === "instructor");
 
   if (isLoadingClasses || isUserDataLoading) {
-    return ( 
-        <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
-            <Spinner size="lg" />
-        </div>
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
+        <Spinner size="lg" />
+      </div>
     );
   }
 
@@ -179,25 +191,25 @@ export default function ClassesPage() {
       </div>
 
       {/* Error Display */}
-      {error && !isLoadingClasses && ( /* ... error display ... */
-         <div className="mb-4 p-4 bg-red-100 text-red-700 border border-red-300 rounded-md">
-            <p>Error: {error}</p>
-         </div>
+      {error && !isLoadingClasses /* ... error display ... */ && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 border border-red-300 rounded-md">
+          <p>Error: {error}</p>
+        </div>
       )}
 
       {/* Content Grid */}
       {classes.length === 0 && !isLoadingClasses ? (
-         <div className="text-center text-muted-foreground mt-10">
-           <p>You are not enrolled in any classes yet, or no classes found.</p>
-         </div>
+        <div className="text-center text-muted-foreground mt-10">
+          <p>You are not enrolled in any classes yet, or no classes found.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-6">
           {classes.map((classItem) => (
             <ClassCard
-                key={classItem._id}
-                classData={classItem}
-                userData={userData} 
-                onDelete={handleDeleteRequest} 
+              key={classItem._id}
+              classData={classItem}
+              userData={userData}
+              onDelete={handleDeleteRequest}
             />
           ))}
         </div>

@@ -199,7 +199,7 @@ export default function SectionPage({
       const expirationDate = new Date(qrCodeDetails.expiresAt);
       return new Date() > expirationDate;
     } catch (e) {
-      console.error("Error parsing expiresAt date:", e);
+      // console.error("Error parsing expiresAt date:", e);
       return true; // Assume expired on error
     }
   }, [qrCodeDetails]);
@@ -239,7 +239,7 @@ export default function SectionPage({
         }
       }
     } catch (error) {
-      console.error("Failed to load or parse data from localStorage", error);
+      // console.error("Failed to load or parse data from localStorage", error);
     }
   }, [sectionId]);
 
@@ -261,7 +261,7 @@ export default function SectionPage({
       );
       setUserData(response.data.data);
     } catch (error) {
-      console.error("Failed to fetch user data", error);
+      // console.error("Failed to fetch user data", error);
       toast.error("Failed to load user information.");
     } finally {
       setIsLoadingUser(false);
@@ -298,12 +298,12 @@ export default function SectionPage({
       if (currentClass) {
         setClassData(currentClass);
       } else {
-        console.error(`Class with ID ${classId} not found in user's classes.`);
+        // console.error(`Class with ID ${classId} not found in user's classes.`);
         toast.error("Class details not found or access denied.");
         setClassData(null);
       }
     } catch (error) {
-      console.error("Failed to fetch class data", error);
+      // console.error("Failed to fetch class data", error);
       toast.error("Failed to load class details.");
       setClassData(null);
     } finally {
@@ -341,14 +341,14 @@ export default function SectionPage({
       if (currentSection) {
         setSectionData(currentSection);
       } else {
-        console.error(
-          `Section with ID ${sectionId} not found in user's sections.`,
-        );
+        // console.error(
+        // `Section with ID ${sectionId} not found in user's sections.`,
+        // );
         toast.error("Section details not found or access denied.");
         setSectionData(null);
       }
     } catch (error) {
-      console.error("Failed to fetch or filter section data", error);
+      // console.error("Failed to fetch or filter section data", error);
       toast.error("Failed to load section details.");
       setSectionData(null);
     } finally {
@@ -387,7 +387,7 @@ export default function SectionPage({
 
       setAvailableStudents(sortedStudents);
     } catch (error) {
-      console.error("Failed to filter students", error);
+      // console.error("Failed to filter students", error);
       toast.error("Failed to prepare student list.");
       setAvailableStudents([]);
     } finally {
@@ -452,7 +452,7 @@ export default function SectionPage({
 
       toast.success(`${studentIdsArray.length} student(s) added to section.`);
     } catch (error) {
-      console.error("Failed to add students", error);
+      // console.error("Failed to add students", error);
       const message =
         error instanceof AxiosError
           ? error.response?.data?.message || error.message
@@ -513,7 +513,7 @@ export default function SectionPage({
 
       toast.success("Student removed from section.");
     } catch (error) {
-      console.error("Failed to remove student", error);
+      // console.error("Failed to remove student", error);
       const message =
         error instanceof AxiosError
           ? error.response?.data?.message || error.message
@@ -561,7 +561,7 @@ export default function SectionPage({
       setSelectedStudentForAttendance("");
       setAttendanceStatus("present");
     } catch (error) {
-      console.error("Failed to submit manual attendance:", error);
+      // console.error("Failed to submit manual attendance:", error);
       const message =
         error instanceof AxiosError
           ? error.response?.data?.message || error.message
@@ -727,10 +727,10 @@ export default function SectionPage({
             }),
           );
         } catch (storageError) {
-          console.error(
-            "Failed to save dayNumber to localStorage",
-            storageError,
-          );
+          // console.error(
+          // "Failed to save dayNumber to localStorage",
+          // storageError,
+          // );
         }
 
         if (locationSource === "manual-input" || locationSource === "stored") {
@@ -741,10 +741,10 @@ export default function SectionPage({
             );
             setStoredManualLocation(locationCoords);
           } catch (storageError) {
-            console.error(
-              "Failed to save manual location to localStorage",
-              storageError,
-            );
+            // console.error(
+            //   "Failed to save manual location to localStorage",
+            //   storageError,
+            // );
             toast.error("Could not save manual location for future use.");
           }
         }
@@ -752,7 +752,7 @@ export default function SectionPage({
         throw new Error("QR Code data missing or invalid in API response.");
       }
     } catch (error) {
-      console.error("Failed to generate QR code API call:", error);
+      // console.error("Failed to generate QR code API call:", error);
       const message =
         error instanceof AxiosError
           ? error.response?.data?.message || error.message
@@ -823,7 +823,7 @@ export default function SectionPage({
       setManualLongitude("");
       toast.success("Stored manual location cleared.");
     } catch (error) {
-      console.error("Failed to clear stored location", error);
+      // console.error("Failed to clear stored location", error);
       toast.error("Could not clear stored location.");
     }
   };
@@ -864,13 +864,13 @@ export default function SectionPage({
           }),
         );
       } catch (storageError) {
-        console.error(
-          "Failed to save updated dayNumber to localStorage",
-          storageError,
-        );
+        // console.error(
+        //   "Failed to save updated dayNumber to localStorage",
+        //   storageError,
+        // );
       }
     } catch (error) {
-      console.error("Failed to close QR attendance:", error);
+      // console.error("Failed to close QR attendance:", error);
       const message =
         error instanceof AxiosError
           ? error.response?.data?.message || error.message

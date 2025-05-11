@@ -125,7 +125,7 @@ export default function AttendanceStatsPage() {
 
       toast.success("Attendance data exported successfully!");
     } catch (error) {
-      console.error("Failed to export attendance data:", error);
+      // console.error("Failed to export attendance data:", error);
       let errorMessage = "Failed to export attendance data.";
 
       if (axios.isAxiosError(error)) {
@@ -177,7 +177,7 @@ export default function AttendanceStatsPage() {
           throw new Error("Failed to fetch attendance data");
         }
       } catch (err) {
-        console.error("Error fetching attendance data:", err);
+        // console.error("Error fetching attendance data:", err);
         setError("Failed to load attendance data. Please try again later.");
       } finally {
         setLoading(false);

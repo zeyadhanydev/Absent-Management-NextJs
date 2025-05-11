@@ -163,7 +163,7 @@ const AttendanceDashboard: React.FC = () => {
 
         setClassSummaries(summaries);
       } catch (error) {
-        console.error("Failed to fetch attendance data:", error);
+        // console.error("Failed to fetch attendance data:", error);
       } finally {
         setIsLoading(false);
       }

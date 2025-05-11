@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { 
-  Command, 
-  CommandEmpty, 
-  CommandGroup, 
-  CommandInput, 
-  CommandItem, 
-  CommandList
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
   Popover,
@@ -17,9 +17,9 @@ import {
 import { Check, ChevronsUpDown, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Spinner } from '@/components/spinner';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/spinner";
 
 interface Student {
   _id: string;
@@ -40,7 +40,10 @@ interface AddStudentFormProps {
   onAddStudent: (studentIds: string[]) => Promise<void>;
 }
 
-export default function AddStudentForm({ classData, onAddStudent }: AddStudentFormProps) {
+export default function AddStudentForm({
+  classData,
+  onAddStudent,
+}: AddStudentFormProps) {
   const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,27 +57,28 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
   const fetchAvailableStudents = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        toast.error('Authentication token not found');
+        toast.error("Authentication token not found");
         return;
       }
-      
+
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/students`, 
-        { headers: { Authorization: `Bearer ${token}` } }
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/students`,
+        { headers: { Authorization: `Bearer ${token}` } },
       );
-      
+
       // Filter out students already in this class
-      const classStudentIds = new Set(classData.students?.map(s => s._id) || []);
-      const available = response.data.data.filter(
-        (student: Student) => !classStudentIds.has(student._id)
+      const classStudentIds = new Set(
+        classData.students?.map((s) => s._id) || [],
       );
-      
+      const available = response.data.data.filter(
+        (student: Student) => !classStudentIds.has(student._id),
+      );
+
       setAvailableStudents(available);
     } catch (error) {
-      console.error('Failed to fetch students', error);
-      toast.error('Failed to load available students');
+      toast.error("Failed to load available students");
     } finally {
       setIsLoading(false);
     }
@@ -82,35 +86,33 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
 
   const handleAddStudent = async () => {
     if (selectedStudentIds.length === 0) return;
-    
+
     setIsAdding(true);
     try {
       await onAddStudent(selectedStudentIds);
-      
+
       // Reset selection
       setSelectedStudentIds([]);
       setOpen(false);
-      
+
       // Refresh available students
       fetchAvailableStudents();
     } catch (error) {
-      console.error('Failed to add student', error);
-      // Error handled by parent component
     } finally {
       setIsAdding(false);
     }
   };
 
   const toggleStudentSelection = (studentId: string) => {
-    setSelectedStudentIds(prev => 
-      prev.includes(studentId) 
-        ? prev.filter(id => id !== studentId) 
-        : [...prev, studentId]
+    setSelectedStudentIds((prev) =>
+      prev.includes(studentId)
+        ? prev.filter((id) => id !== studentId)
+        : [...prev, studentId],
     );
   };
 
   const selectAllStudents = () => {
-    const allStudentIds = availableStudents.map(student => student._id);
+    const allStudentIds = availableStudents.map((student) => student._id);
     setSelectedStudentIds(allStudentIds);
   };
 
@@ -148,9 +150,11 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
                     className="w-full sm:w-[350px] justify-between"
                     disabled={isAdding || availableStudents.length === 0}
                   >
-                    {selectedStudentIds.length > 0 ? 
-                      `${selectedStudentIds.length} student${selectedStudentIds.length > 1 ? 's' : ''} selected` : 
-                      availableStudents.length === 0 ? "No students available" : "Select students to add"}
+                    {selectedStudentIds.length > 0
+                      ? `${selectedStudentIds.length} student${selectedStudentIds.length > 1 ? "s" : ""} selected`
+                      : availableStudents.length === 0
+                        ? "No students available"
+                        : "Select students to add"}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -159,9 +163,9 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
                     <div className="flex items-center justify-between p-2 border-b">
                       <CommandInput placeholder="Search student..." />
                       <div className="flex items-center gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={selectAllStudents}
                           disabled={availableStudents.length === 0}
                           className="h-7 px-2 text-xs"
@@ -194,12 +198,16 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
                             <Check
                               className={cn(
                                 "mr-2 h-4 w-4",
-                                selectedStudentIds.includes(student._id) ? "opacity-100" : "opacity-0"
+                                selectedStudentIds.includes(student._id)
+                                  ? "opacity-100"
+                                  : "opacity-0",
                               )}
                             />
                             <div className="flex flex-col">
                               <span>{student.name}</span>
-                              <span className="text-xs text-muted-foreground">ID: {student.studentId}</span>
+                              <span className="text-xs text-muted-foreground">
+                                ID: {student.studentId}
+                              </span>
                             </div>
                           </CommandItem>
                         ))}
@@ -208,13 +216,20 @@ export default function AddStudentForm({ classData, onAddStudent }: AddStudentFo
                   </Command>
                 </PopoverContent>
               </Popover>
-              <Button 
-                onClick={handleAddStudent} 
+              <Button
+                onClick={handleAddStudent}
                 disabled={selectedStudentIds.length === 0 || isAdding}
                 className="w-full sm:w-auto"
               >
-                {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                Add {selectedStudentIds.length > 0 ? `${selectedStudentIds.length} Student${selectedStudentIds.length > 1 ? 's' : ''}` : 'to Class'}
+                {isAdding ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-2" />
+                )}
+                Add{" "}
+                {selectedStudentIds.length > 0
+                  ? `${selectedStudentIds.length} Student${selectedStudentIds.length > 1 ? "s" : ""}`
+                  : "to Class"}
               </Button>
             </>
           )}

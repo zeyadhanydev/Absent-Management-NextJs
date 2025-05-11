@@ -1,23 +1,29 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
-import axios from 'axios';
-import { toast } from 'sonner';
-import { BarChart3, ChevronLeft, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Spinner } from '@/components/spinner';
-import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
+import React, { useState, useEffect, useCallback } from "react";
+import { useParams } from "next/navigation";
+import axios from "axios";
+import { toast } from "sonner";
+import { BarChart3, ChevronLeft, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Spinner } from "@/components/spinner";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 // Import components
-import StudentsGrid from './_components/students-grid';
-import AddStudentForm from './_components/add-student-form';
-import SectionCard from './_components/section-card';
-import {CreateSectionModal} from './_components/create-section-modal';
-import { Separator } from '@/components/ui/separator';
-import { useRouter } from 'next/navigation';
+import StudentsGrid from "./_components/students-grid";
+import AddStudentForm from "./_components/add-student-form";
+import SectionCard from "./_components/section-card";
+import { CreateSectionModal } from "./_components/create-section-modal";
+import { Separator } from "@/components/ui/separator";
+import { useRouter } from "next/navigation";
 
 // Define interfaces
 interface Student {
@@ -51,37 +57,45 @@ interface ClassData {
 interface UserData {
   _id: string;
   name: string;
-  role: 'student' | 'admin' | 'instructor';
+  role: "student" | "admin" | "instructor";
 }
 
 export default function ClassDetailPage() {
   // Get id from router params
   const params = useParams();
   const classId = params.id as string;
-  
+
   const [classData, setClassData] = useState<ClassData | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoadingClass, setIsLoadingClass] = useState(true);
   const [isLoadingSections, setIsLoadingSections] = useState(true);
-  const [isCreatingSectionModalOpen, setIsCreatingSectionModalOpen] = useState(false);
+  const [isCreatingSectionModalOpen, setIsCreatingSectionModalOpen] =
+    useState(false);
   const router = useRouter();
   // Permissions check
-  const canManage = userData && (userData.role === 'admin' || (userData.role === 'instructor' && classData?.teacherId === userData._id));
+  const canManage =
+    userData &&
+    (userData.role === "admin" ||
+      (userData.role === "instructor" &&
+        classData?.teacherId === userData._id));
 
   // Fetch user data
   const fetchUserData = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) return;
-      
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
+
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/me`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
       setUserData(response.data.data);
     } catch (error) {
-      console.error('Failed to fetch user data', error);
+      // console.error('Failed to fetch user data', error);
     }
   }, []);
 
@@ -89,25 +103,30 @@ export default function ClassDetailPage() {
   const fetchClassData = useCallback(async () => {
     setIsLoadingClass(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        toast.error('Authentication token not found');
+        toast.error("Authentication token not found");
         return;
       }
-      
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/my-classes`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
 
-      const currentClass = response.data.data.find((c: ClassData) => c._id === classId);
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/my-classes`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      const currentClass = response.data.data.find(
+        (c: ClassData) => c._id === classId,
+      );
       if (currentClass) {
         setClassData(currentClass);
       } else {
-        toast.error('Class not found');
+        toast.error("Class not found");
       }
     } catch (error) {
-      console.error('Failed to fetch class data', error);
-      toast.error('Failed to load class details');
+      // console.error('Failed to fetch class data', error);
+      toast.error("Failed to load class details");
     } finally {
       setIsLoadingClass(false);
     }
@@ -117,23 +136,23 @@ export default function ClassDetailPage() {
   const fetchSections = useCallback(async () => {
     setIsLoadingSections(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) return;
-      
+
       const response = await axios.get(
         `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/sections/my-sections`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
-            
+
       // Filter sections by the current classId
-      const filteredSections = response.data.data.filter((section: Section) => 
-        section.classId === classId
+      const filteredSections = response.data.data.filter(
+        (section: Section) => section.classId === classId,
       );
-      
+
       setSections(filteredSections || []);
     } catch (error) {
-      console.error('Failed to fetch sections', error);
-      toast.error('Failed to load class sections');
+      // console.error('Failed to fetch sections', error);
+      toast.error("Failed to load class sections");
     } finally {
       setIsLoadingSections(false);
     }
@@ -142,110 +161,115 @@ export default function ClassDetailPage() {
   // Add student to class
   const handleAddStudent = async (studentIds: string[]) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        toast.error('Authentication token not found');
+        toast.error("Authentication token not found");
         return;
       }
-      
+
       await axios.post(
         `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/add-students`,
         {
           classId,
-          studentIds
+          studentIds,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
-      
-      toast.success('Student(s) added successfully');
+
+      toast.success("Student(s) added successfully");
       fetchClassData(); // Refresh class data to update the students list
     } catch (error) {
-      console.error('Failed to add student', error);
-      toast.error('Failed to add student to class');
+      // console.error('Failed to add student', error);
+      toast.error("Failed to add student to class");
     }
   };
 
   // Remove student from class
   const handleRemoveStudent = async (studentId: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        toast.error('Authentication token not found');
+        toast.error("Authentication token not found");
         return;
       }
-      
-      await axios.delete(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/remove-students`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
 
-        data: {
-          classId,
-          studentIds: [studentId],
+      await axios.delete(
+        `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/remove-students`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+
+          data: {
+            classId,
+            studentIds: [studentId],
+          },
         },
-      });
-      
-      toast.success('Student removed successfully');
+      );
+
+      toast.success("Student removed successfully");
       fetchClassData(); // Refresh class data
     } catch (error) {
-      console.error('Failed to remove student', error);
-      toast.error('Failed to remove student from class');
+      // console.error('Failed to remove student', error);
+      toast.error("Failed to remove student from class");
     }
   };
-  const handleCreateSection = async (sectionNumber: number, dayNumber: number) => {
+  const handleCreateSection = async (
+    sectionNumber: number,
+    dayNumber: number,
+  ) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        toast.error('Authentication token not found');
+        toast.error("Authentication token not found");
         return;
       }
-  
+
       // Ensure classId is available in this scope.
       // If handleCreateSection is defined in the parent component,
       // classId should be accessible from props or state.
       if (!classId) {
-          toast.error('Class ID is missing.');
-          console.error('handleCreateSection called without a valid classId.');
-          return;
+        toast.error("Class ID is missing.");
+        // console.error('handleCreateSection called without a valid classId.');
+        return;
       }
-  
-  
+
       await axios.post(
         `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/sections/create`,
         {
           classId, // Make sure this variable holds the correct class ID
           sectionNumber,
-          dayNumber
+          dayNumber,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
-  
-      toast.success('Section created successfully');
+
+      toast.success("Section created successfully");
       fetchSections(); // Refresh sections list - ensure this function is in scope
       fetchClassData(); // Update class data (e.g., section count) - ensure this function is in scope
     } catch (error) {
-      console.error('Failed to create section', error);
+      // console.error('Failed to create section', error);
       // Log more specific error details if available (e.g., from Axios response)
-      let errorMessage = 'Failed to create section';
+      let errorMessage = "Failed to create section";
       if (axios.isAxiosError(error) && error.response) {
         errorMessage = `Failed to create section: ${error.response.data?.message || error.message}`;
       } else if (error instanceof Error) {
-          errorMessage = `Failed to create section: ${error.message}`;
+        errorMessage = `Failed to create section: ${error.message}`;
       }
       toast.error(errorMessage);
     }
   };
-  
+
   // Delete a section
   const handleDeleteSection = async (sectionId: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        toast.error('Authentication token not found');
+        toast.error("Authentication token not found");
         return;
       }
-      
+
       await axios.delete(
         `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/sections/delete`,
         {
@@ -254,17 +278,17 @@ export default function ClassDetailPage() {
             "Content-Type": "application/json",
           },
           data: {
-            sectionId: sectionId
-          }
-        }
+            sectionId: sectionId,
+          },
+        },
       );
-      
-      toast.success('Section deleted successfully');
+
+      toast.success("Section deleted successfully");
       fetchSections(); // Refresh sections
       fetchClassData(); // Update section count
     } catch (error) {
-      console.error('Failed to delete section', error);
-      toast.error('Failed to delete section');
+      // console.error('Failed to delete section', error);
+      toast.error("Failed to delete section");
     }
   };
 
@@ -308,16 +332,23 @@ export default function ClassDetailPage() {
               <ChevronLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <div className='flex flex-col'>
+          <div className="flex flex-col">
             <h1 className="text-2xl md:text-3xl font-bold">{classData.name}</h1>
-            <p className="text-white font-bold text-xl">Semester: {classData.semester}</p>
+            <p className="text-white font-bold text-xl">
+              Semester: {classData.semester}
+            </p>
           </div>
         </div>
-        <Button onClick={(e) => {
-          e.stopPropagation()
-          router.push(`/classes/${classId}/attendance`)}} variant="outline" className="hidden lg:flex">
-            <BarChart3 className="mr-2 h-4 w-4" /> Attendance
-          </Button>
+        <Button
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/classes/${classId}/attendance`);
+          }}
+          variant="outline"
+          className="hidden lg:flex"
+        >
+          <BarChart3 className="mr-2 h-4 w-4" /> Attendance
+        </Button>
         {canManage && (
           <Button onClick={() => setIsCreatingSectionModalOpen(true)}>
             <Plus className="mr-2 h-4 w-4" /> Create Section
@@ -374,15 +405,12 @@ export default function ClassDetailPage() {
         ) : sections.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {sections.map((section) => (
-
               <SectionCard
                 key={section._id}
                 section={section}
                 classId={classId}
                 canManage={!!canManage}
-
                 classData={classData}
-               
                 onDelete={handleDeleteSection}
               />
             ))}

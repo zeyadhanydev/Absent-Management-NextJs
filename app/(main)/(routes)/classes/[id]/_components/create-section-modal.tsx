@@ -49,7 +49,6 @@ export function CreateSectionModal({
       setSectionNumber("");
       onOpenChange(false);
     } catch (error) {
-      console.error("Error during section creation:", error);
     } finally {
       setIsCreating(false);
     }

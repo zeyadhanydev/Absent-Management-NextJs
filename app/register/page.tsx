@@ -36,16 +36,16 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<Role | undefined>(undefined);
-  
+
   // Student-specific fields
   const [studentId, setStudentId] = useState("");
   const [department, setDepartment] = useState("");
-  
+
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
-  
+
   const router = useRouter();
 
   // Check if user is authorized (admin)
@@ -54,23 +54,25 @@ export default function Register() {
       try {
         const token = localStorage.getItem("token");
         const storedRole = localStorage.getItem("role");
-        
+
         // Clean up stored role value by removing quotes if present
-        const userRole = storedRole?.replace(/"/g, '');
-        
+        const userRole = storedRole?.replace(/"/g, "");
+
         if (!token) {
           setIsAuthorized(false);
-        } else if (userRole === 'admin') {
+        } else if (userRole === "admin") {
           setIsAuthorized(true);
         } else {
           // Verify with API if needed
           try {
-            
-            const response = await axios.get(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/me`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            
-            if (response.data?.data?.role === 'admin') {
+            const response = await axios.get(
+              `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/me`,
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              },
+            );
+
+            if (response.data?.data?.role === "admin") {
               setIsAuthorized(true);
             } else {
               setIsAuthorized(false);
@@ -87,14 +89,14 @@ export default function Register() {
         setIsInitializing(false);
       }
     };
-    
+
     checkAuth();
   }, [router]);
 
   const validateForm = () => {
     // Reset the error before validation
     setError(null);
-    
+
     // Basic validation for all roles
     if (!name.trim()) {
       setError("Name is required");
@@ -104,7 +106,7 @@ export default function Register() {
       setError("Email is required");
       return false;
     }
-    if (!email.includes('@') || !email.includes('.')) {
+    if (!email.includes("@") || !email.includes(".")) {
       setError("Please enter a valid email address");
       return false;
     }
@@ -120,7 +122,7 @@ export default function Register() {
       setError("Passwords don't match");
       return false;
     }
-    
+
     // Student-specific validation
     if (role === "student") {
       if (!studentId.trim()) {
@@ -132,15 +134,15 @@ export default function Register() {
         return false;
       }
     }
-    
+
     return true;
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setError(null);
     setIsLoading(true);
 
@@ -151,7 +153,7 @@ export default function Register() {
       password,
       role,
     };
-    
+
     // Add student-specific fields when role is student
     if (role === "student") {
       userData.studentId = studentId;
@@ -166,14 +168,16 @@ export default function Register() {
           withCredentials: true,
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem("token")}`
-          }
-        }
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
       );
-      
+
       if (response.status === 200 || response.status === 201) {
-        toast.success(`${role?.charAt(0).toUpperCase() + role?.slice(1)} registered successfully!`);
-        
+        toast.success(
+          `${role?.charAt(0).toUpperCase() + role?.slice(1)} registered successfully!`,
+        );
+
         // Reset form
         setName("");
         setEmail("");
@@ -184,29 +188,37 @@ export default function Register() {
         setDepartment("");
       } else {
         const errorData = response.data;
-        setError(errorData?.message || `Registration failed. Please try again.`);
+        setError(
+          errorData?.message || `Registration failed. Please try again.`,
+        );
       }
     } catch (err: any) {
-      console.error("Registration request failed:", err);
-      let errorMessage = "An unexpected error occurred. Please try again later.";
-      
+      // console.error("Registration request failed:", err);
+      let errorMessage =
+        "An unexpected error occurred. Please try again later.";
+
       if (axios.isAxiosError(err) && err.response) {
-        console.error("Error response data:", err.response.data);
-        
+        // console.error("Error response data:", err.response.data);
+
         // Handle specific error cases
         if (err.response.status === 409) {
-          errorMessage = "This email is already registered. Please use a different email.";
+          errorMessage =
+            "This email is already registered. Please use a different email.";
         } else if (err.response.status === 400) {
-          errorMessage = err.response.data?.message || "Invalid data provided. Please check your information.";
+          errorMessage =
+            err.response.data?.message ||
+            "Invalid data provided. Please check your information.";
         } else if (err.response.status === 401 || err.response.status === 403) {
           errorMessage = "You are not authorized to register users.";
         } else {
-          errorMessage = err.response.data?.message || `Request failed with status ${err.response.status}`;
+          errorMessage =
+            err.response.data?.message ||
+            `Request failed with status ${err.response.status}`;
         }
       } else if (err instanceof Error) {
         errorMessage = err.message;
       }
-      
+
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -229,8 +241,8 @@ export default function Register() {
         <ShieldAlert className="h-16 w-16 text-destructive mb-4" />
         <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
         <p className="text-muted-foreground mb-6 text-center">
-          You do not have permission to access this page.
-          Only administrators can register new users.
+          You do not have permission to access this page. Only administrators
+          can register new users.
         </p>
         <Button asChild>
           <Link href="/">Return to Home</Link>
@@ -270,7 +282,9 @@ export default function Register() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="role" className="text-sm font-medium">Role</Label>
+                <Label htmlFor="role" className="text-sm font-medium">
+                  Role
+                </Label>
                 <Select
                   value={role}
                   onValueChange={(value: Role) => setRole(value)}
@@ -288,7 +302,9 @@ export default function Register() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
+                <Label htmlFor="name" className="text-sm font-medium">
+                  Full Name
+                </Label>
                 <Input
                   id="name"
                   type="text"
@@ -303,7 +319,9 @@ export default function Register() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">Email Address</Label>
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email Address
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -316,12 +334,14 @@ export default function Register() {
                   autoComplete="email"
                 />
               </div>
-              
+
               {/* Student-specific fields */}
               {role === "student" && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="studentId" className="text-sm font-medium">Student ID</Label>
+                    <Label htmlFor="studentId" className="text-sm font-medium">
+                      Student ID
+                    </Label>
                     <Input
                       id="studentId"
                       type="text"
@@ -333,9 +353,11 @@ export default function Register() {
                       className="bg-background"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <Label htmlFor="department" className="text-sm font-medium">Department</Label>
+                    <Label htmlFor="department" className="text-sm font-medium">
+                      Department
+                    </Label>
                     <Input
                       id="department"
                       type="text"
@@ -352,7 +374,9 @@ export default function Register() {
 
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                  <Label htmlFor="password" className="text-sm font-medium">
+                    Password
+                  </Label>
                   <Input
                     id="password"
                     type="password"
@@ -366,7 +390,12 @@ export default function Register() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</Label>
+                  <Label
+                    htmlFor="confirmPassword"
+                    className="text-sm font-medium"
+                  >
+                    Confirm Password
+                  </Label>
                   <Input
                     id="confirmPassword"
                     type="password"
@@ -387,25 +416,21 @@ export default function Register() {
             </CardContent>
 
             <CardFooter className="flex flex-col space-y-4 pt-2">
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Creating account...
                   </>
                 ) : (
-                  `Register ${role ? role.charAt(0).toUpperCase() + role.slice(1) : 'User'}`
+                  `Register ${role ? role.charAt(0).toUpperCase() + role.slice(1) : "User"}`
                 )}
               </Button>
 
               <p className="text-sm text-center text-muted-foreground">
                 Want to go back?{" "}
-                <Link 
-                  href="/" 
+                <Link
+                  href="/"
                   className="font-medium text-primary hover:text-primary/90 underline-offset-4 hover:underline"
                 >
                   Return to Dashboard

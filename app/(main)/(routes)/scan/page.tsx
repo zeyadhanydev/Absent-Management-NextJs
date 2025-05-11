@@ -58,7 +58,7 @@ export default function QRScannerPage() {
         const result = await fp.get();
         setFingerprint(result.visitorId);
       } catch (err) {
-        console.error("Error generating fingerprint:", err);
+        // console.error("Error generating fingerprint:", err);
         setError("Failed to generate device fingerprint");
         toast.error(
           "Failed to generate device fingerprint. Please refresh the page.",
@@ -106,7 +106,7 @@ export default function QRScannerPage() {
     getCurrentLocation()
       .then(setLocation)
       .catch((err) => {
-        console.error("Location error:", err);
+        // console.error("Location error:", err);
         setError("Please enable location services");
         toast.error(
           "Location services are required. Please enable GPS and refresh.",
@@ -162,7 +162,7 @@ export default function QRScannerPage() {
         throw new Error("No cameras found");
       }
     } catch (err: any) {
-      console.error("Error starting scanner:", err);
+      // console.error("Error starting scanner:", err);
       setError(err.message || "Failed to start camera");
       toast.error(`Camera error: ${err.message || "Failed to start camera"}`, {
         duration: 4000,
@@ -188,7 +188,7 @@ export default function QRScannerPage() {
           setError(null);
           setScanning(true);
         } catch (retryErr) {
-          console.error("Error on retry:", retryErr);
+          // console.error("Error on retry:", retryErr);
           setError("Could not access back camera");
           toast.error("Could not access camera. Please check permissions.", {
             duration: 5000,
@@ -206,7 +206,7 @@ export default function QRScannerPage() {
         await qrRef.current.stop();
         setScanning(false);
       } catch (err) {
-        console.error("Error stopping scanner:", err);
+        // console.error("Error stopping scanner:", err);
         setError("Failed to stop scanner");
         toast.error("Failed to stop scanner", {
           duration: 3000,
@@ -266,7 +266,7 @@ export default function QRScannerPage() {
           }
         } catch (err: any) {
           toast.dismiss("verifying");
-          console.error("Verification error:", err);
+          // console.error("Verification error:", err);
 
           // Extract specific error message from response
           let errorMessage = "Failed to verify attendance. Please try again.";

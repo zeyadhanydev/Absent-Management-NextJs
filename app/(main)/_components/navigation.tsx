@@ -119,7 +119,7 @@ export default function Navigation() {
           fetchClasses();
         }
       } catch (err) {
-        console.error("Failed to fetch user data:", err);
+        // console.error("Failed to fetch user data:", err);
         setUserData(null);
         setRole(null);
       } finally {
@@ -155,7 +155,7 @@ export default function Navigation() {
 
       setClasses(response.data.data || []);
     } catch (err) {
-      console.error("Failed to fetch classes for navigation:", err);
+      // console.error("Failed to fetch classes for navigation:", err);
       setClasses([]);
     } finally {
       setIsLoadingClasses(false);
@@ -243,7 +243,7 @@ export default function Navigation() {
       );
       setClasses(response.data.data || []);
     } catch (err: any) {
-      console.error("Failed to fetch classes:", err);
+      // console.error("Failed to fetch classes:", err);
       let errorMessage = "Failed to load classes.";
       if (axios.isAxiosError(err) && err.response?.status === 401) {
         errorMessage = "Your session might have expired. Please log in again.";

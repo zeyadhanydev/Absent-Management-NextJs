@@ -77,7 +77,7 @@ export default function Login() {
         setError("Invalid credentials. Please try again.");
       }
     } catch (error: any) {
-      console.error("Login failed:", error);
+      // console.error("Login failed:", error);
       setError(error?.message || "Login failed. Please try again.");
     } finally {
       setIsLoading(false);

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,12 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
   // DialogTrigger, // Trigger will be handled in the parent page
-  DialogClose // Import DialogClose
+  DialogClose, // Import DialogClose
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Spinner } from '@/components/spinner'; // Assuming spinner path
-import { toast } from 'sonner';
+import { Spinner } from "@/components/spinner"; // Assuming spinner path
+import { toast } from "sonner";
 
 interface CreateClassModalProps {
   isOpen: boolean;
@@ -27,7 +27,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
   isOpen,
   onOpenChange,
   onClassCreated,
-  teacherId
+  teacherId,
 }) => {
   const [name, setName] = useState("");
   const [semester, setSemester] = useState("");
@@ -49,8 +49,8 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
       return;
     }
     if (!teacherId) {
-        setError("Could not verify teacher identity. Please try reloading.");
-        return;
+      setError("Could not verify teacher identity. Please try reloading.");
+      return;
     }
 
     setIsLoading(true);
@@ -73,24 +73,29 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
-      if (response.status === 201 || response.status === 200) { // Handle 201 Created or 200 OK
+      if (response.status === 201 || response.status === 200) {
+        // Handle 201 Created or 200 OK
         toast.success(`Class "${name}" created successfully!`);
         onClassCreated(); // Trigger class list refresh in parent
         onOpenChange(false); // Close the modal
       } else {
-        throw new Error(response.data?.message || `Failed to create class (Status: ${response.status})`);
+        throw new Error(
+          response.data?.message ||
+            `Failed to create class (Status: ${response.status})`,
+        );
       }
     } catch (err: any) {
-      console.error("Failed to create class:", err);
+      // console.error("Failed to create class:", err);
       let errorMessage = "Failed to create class. Please try again later.";
-       if (axios.isAxiosError(err) && err.response) {
-         errorMessage = err.response.data?.message || `Error ${err.response.status}`;
-       } else if (err instanceof Error) {
-         errorMessage = err.message;
-       }
+      if (axios.isAxiosError(err) && err.response) {
+        errorMessage =
+          err.response.data?.message || `Error ${err.response.status}`;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -139,7 +144,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
               placeholder="e.g., Fall 2024"
               disabled={isLoading}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === "Enter") {
                   e.preventDefault();
                   handleCreate();
                 }
@@ -147,29 +152,31 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
             />
           </div>
           {error && (
-             <p className="col-span-4 text-sm text-red-600 dark:text-red-500 text-center">{error}</p>
+            <p className="col-span-4 text-sm text-red-600 dark:text-red-500 text-center">
+              {error}
+            </p>
           )}
         </form>
         <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-           {/* Use DialogClose for the Cancel button */}
-           <DialogClose asChild>
-             <Button 
-               type="button" 
-               variant="outline" 
-               disabled={isLoading}
-               className="w-full sm:w-auto"
-             >
-               Cancel
-             </Button>
-           </DialogClose>
-          <Button 
-            type="submit" 
-            onClick={handleCreate} 
+          {/* Use DialogClose for the Cancel button */}
+          <DialogClose asChild>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isLoading}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+          </DialogClose>
+          <Button
+            type="submit"
+            onClick={handleCreate}
             disabled={isLoading}
             className="w-full sm:w-auto"
           >
-            {isLoading ? <Spinner size="sm" className="mr-2"/> : null}
-            {isLoading ? 'Creating...' : 'Create Class'}
+            {isLoading ? <Spinner size="sm" className="mr-2" /> : null}
+            {isLoading ? "Creating..." : "Create Class"}
           </Button>
         </DialogFooter>
       </DialogContent>
