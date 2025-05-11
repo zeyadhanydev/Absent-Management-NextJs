@@ -12,6 +12,9 @@ import {
   ChevronDown,
   AlertCircle,
   Users,
+  WifiIcon,
+  CalendarCheck2,
+  BookCheck,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import React, {
@@ -429,7 +432,32 @@ export default function Navigation() {
                 </CollapsibleContent>
               </Collapsible>
             )}
-
+            {(role === "admin" || role === "instructor") && (
+              <Link href="/comming-soon" className="block">
+                <SidebarItem
+                  label="GPA"
+                  icon={BookCheck}
+                  className={cn(
+                    "transition-colors hover:bg-accent hover:text-accent-foreground",
+                    pathname === "/register" &&
+                      "bg-accent text-accent-foreground",
+                  )}
+                />
+              </Link>
+            )}
+            {(role === "admin" || role === "instructor") && (
+              <Link href="/comming-soon" className="block">
+                <SidebarItem
+                  label="Course Schadule"
+                  icon={CalendarCheck2}
+                  className={cn(
+                    "transition-colors hover:bg-accent hover:text-accent-foreground",
+                    pathname === "/register" &&
+                      "bg-accent text-accent-foreground",
+                  )}
+                />
+              </Link>
+            )}
             {/* Student specific navigation items */}
             {(role === "student" || role === '"student"') && (
               <>
@@ -457,6 +485,7 @@ export default function Navigation() {
                 </Link>
               </>
             )}
+
             {role === "admin" && (
               <Link href="/register" className="block">
                 <SidebarItem
