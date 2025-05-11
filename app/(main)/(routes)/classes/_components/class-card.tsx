@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Card,
   CardContent,
@@ -7,12 +7,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Users, BookOpen, CalendarDays, TrashIcon, ExternalLink, BarChart3 } from 'lucide-react';
+import {
+  Users,
+  BookOpen,
+  CalendarDays,
+  TrashIcon,
+  ExternalLink,
+  BarChart3,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useRouter } from 'next/navigation';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useRouter } from "next/navigation";
 
 // Define the structure of a student
 interface Student {
@@ -37,22 +49,32 @@ interface ClassCardProps {
   };
   userData: {
     _id: string;
-    role: 'student' | 'admin' | 'instructor';
+    role: "student" | "admin" | "instructor";
   } | null;
   onClick?: () => void;
   onDelete: (classId: string, className: string) => void;
 }
 
-export const ClassCard: React.FC<ClassCardProps> = ({ classData, userData, onClick, onDelete }) => {
+export const ClassCard: React.FC<ClassCardProps> = ({
+  classData,
+  userData,
+  onClick,
+  onDelete,
+}) => {
   const studentCount = classData.students?.length || 0;
   const router = useRouter();
-  
+
   // Determine badge variant based on status
-  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  const getStatusVariant = (
+    status: string,
+  ): "default" | "secondary" | "destructive" | "outline" => {
     switch (status?.toLowerCase()) {
-      case 'active': return 'default';
-      case 'inactive': return 'secondary';
-      default: return 'outline';
+      case "active":
+        return "default";
+      case "inactive":
+        return "secondary";
+      default:
+        return "outline";
     }
   };
 
@@ -62,15 +84,15 @@ export const ClassCard: React.FC<ClassCardProps> = ({ classData, userData, onCli
   };
 
   // Determine if the current user can delete this class
-  const canDelete = userData && (userData.role === 'admin');
+  const canDelete = userData && userData.role === "admin";
 
   // Format date for display (assuming createdAt is ISO string)
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
@@ -81,7 +103,7 @@ export const ClassCard: React.FC<ClassCardProps> = ({ classData, userData, onCli
           "group flex flex-col h-full overflow-hidden relative transition-all duration-300",
           "bg-background border-border hover:border-primary/20",
           "hover:shadow-lg hover:shadow-primary/5",
-          onClick ? "cursor-pointer" : ""
+          onClick ? "cursor-pointer" : "",
         )}
         onClick={onClick}
       >
@@ -98,9 +120,9 @@ export const ClassCard: React.FC<ClassCardProps> = ({ classData, userData, onCli
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant='ghost'
+                variant="ghost"
                 size="icon"
-                className='absolute top-3 right-3 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-destructive hover:text-destructive-foreground'
+                className="absolute top-3 right-3 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-destructive hover:text-destructive-foreground"
                 onClick={handleDeleteClick}
                 aria-label={`Delete class ${classData.name}`}
               >
@@ -114,7 +136,10 @@ export const ClassCard: React.FC<ClassCardProps> = ({ classData, userData, onCli
         )}
 
         <CardHeader className="pt-10 pb-3">
-          <CardTitle className="text-xl font-semibold truncate pr-8 leading-tight" title={classData.name}>
+          <CardTitle
+            className="text-xl font-semibold truncate pr-8 leading-tight"
+            title={classData.name}
+          >
             {classData.name}
           </CardTitle>
           <CardDescription className="flex items-center mt-2 text-sm">
@@ -132,7 +157,7 @@ export const ClassCard: React.FC<ClassCardProps> = ({ classData, userData, onCli
                 <span className="font-medium">{studentCount}</span>
               </div>
             </div>
-            
+
             <div className="flex flex-col space-y-1 bg-muted/30 p-3 rounded-lg">
               <div className="text-xs text-muted-foreground">Sections</div>
               <div className="flex items-center">
@@ -141,15 +166,15 @@ export const ClassCard: React.FC<ClassCardProps> = ({ classData, userData, onCli
               </div>
             </div>
           </div>
-          
+
           <div className="text-xs text-muted-foreground flex items-center">
             <span>Created: {formatDate(classData.createdAt)}</span>
           </div>
         </CardContent>
 
         <CardFooter className="flex justify-between gap-2 border-t p-4 bg-muted/10">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             className="flex-1 flex items-center justify-center gap-1"
             onClick={(e) => {
@@ -160,14 +185,15 @@ export const ClassCard: React.FC<ClassCardProps> = ({ classData, userData, onCli
             <ExternalLink className="h-3.5 w-3.5" />
             <span>Explore</span>
           </Button>
-          
-          <Button 
-            variant="default" 
+
+          <Button
+            variant="default"
             size="sm"
             className="flex-1 flex items-center justify-center gap-1"
             onClick={(e) => {
               e.stopPropagation();
               router.push(`/classes/${classData._id}/attendance`);
+              localStorage.setItem("className", classData.name);
             }}
           >
             <BarChart3 className="h-3.5 w-3.5" />

@@ -457,7 +457,7 @@ export default function Navigation() {
                 </Link>
               </>
             )}
-            {(role === "admin" || role === "instructor") && (
+            {role === "admin" && (
               <Link href="/register" className="block">
                 <SidebarItem
                   label="Add Users"
