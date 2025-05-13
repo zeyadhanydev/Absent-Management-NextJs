@@ -285,6 +285,7 @@ const AttendanceDashboard: React.FC = () => {
     const totalCount = presentCount + lateCount;
     return {
       total,
+      presentCount,
       totalCount,
       absentCount,
       lateCount,

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -25,6 +25,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useRouter } from "next/navigation";
+import { useStep } from "usehooks-ts";
+import { toast } from "sonner";
+import axios from "axios";
 
 // Define the structure of a student
 interface Student {
@@ -95,6 +98,30 @@ export const ClassCard: React.FC<ClassCardProps> = ({
       day: "numeric",
     });
   };
+  // Update the state definition with proper typing
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+
+  // Update the filter and display logic
+  const currentTeacher =
+    teachers?.find((data) => data._id === classData.teacherId)?.name ||
+    "Unknown Teacher";
+
+  // Update the useEffect
+  useEffect(() => {
+    axios
+      .get(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/instructor`, {
+        headers: {
+          Authorization: `Bearer ${localStorage?.getItem("token")}`,
+        },
+      })
+      .then((res) => {
+        console.log(res.data.data);
+        setTeachers(res.data.data || []);
+      })
+      .catch(() => {
+        toast.error("Failed to fetch instructors.");
+      });
+  }, []); // Remove classData from dependencies since it's not needed
 
   return (
     <TooltipProvider>
@@ -145,6 +172,10 @@ export const ClassCard: React.FC<ClassCardProps> = ({
           <CardDescription className="flex items-center mt-2 text-sm">
             <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />
             {classData.semester}
+          </CardDescription>
+          <CardDescription className="flex items-center mt-2 text-sm">
+            <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />
+            {currentTeacher}
           </CardDescription>
         </CardHeader>
 
