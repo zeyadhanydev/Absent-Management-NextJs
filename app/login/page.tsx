@@ -150,8 +150,7 @@ export default function Login() {
                     className="text-xs text-primary hover:text-primary/90 underline-offset-4 hover:underline"
                   >
                     Forgot password?
-                  </Link> */} 
-                  {/* تبا لك يا زياد */}
+                  </Link> */}
                 </div>
                 <Input
                   id="password"
@@ -193,7 +192,6 @@ export default function Login() {
                   Register
                 </Link>
               </p> */}
-              {/* تبا لك يا زوز */}
             </CardFooter>
           </form>
         </Card>

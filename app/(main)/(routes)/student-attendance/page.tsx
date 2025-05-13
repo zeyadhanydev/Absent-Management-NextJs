@@ -279,11 +279,13 @@ const AttendanceDashboard: React.FC = () => {
       (r) => r.status === "late",
     ).length;
 
-const attendanceRate = total > 0 ? ((presentCount + lateCount) / total) * 100 : 0; //متفتكس تاني و متشغلش دماغك يعم زياااااااااد و تبا لك
+    const attendanceRate =
+      total > 0 ? ((presentCount + lateCount) / total) * 100 : 0;
 
+    const totalCount = presentCount + lateCount;
     return {
       total,
-      presentCount,
+      totalCount,
       absentCount,
       lateCount,
       attendanceRate: attendanceRate.toFixed(1),
@@ -417,7 +419,7 @@ const attendanceRate = total > 0 ? ((presentCount + lateCount) / total) * 100 : 
           <CardContent>
             <div className="text-3xl font-bold">{stats.attendanceRate}%</div>
             <p className="text-xs text-muted-foreground pt-1">
-              {stats.presentCount} present out of {stats.total} classes
+              {stats.totalCount} present out of {stats.total} classes
             </p>
           </CardContent>
         </Card>
