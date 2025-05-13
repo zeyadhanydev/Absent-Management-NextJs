@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
@@ -32,7 +34,7 @@ interface CreateClassModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onClassCreated: () => void;
-  teacherId: string | null; // For instructor
+  teacherId: string | null;
   userRole: "admin" | "instructor";
 }
 
@@ -41,12 +43,14 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
   onOpenChange,
   onClassCreated,
   teacherId,
+  userRole: initialUserRole,
 }) => {
   const [name, setName] = useState("");
   const [semester, setSemester] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState(localStorage.getItem("role"));
+  const [userRole, setUserRole] = useState<string | null>(initialUserRole);
+  const [token, setToken] = useState<string | null>(null);
 
   // For admin: instructor select
   const [instructors, setInstructors] = useState<Instructor[]>([]);
@@ -54,15 +58,21 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
     null,
   );
 
+  // Initialize client-side values
+  useEffect(() => {
+    setUserRole(localStorage?.getItem("role") || initialUserRole);
+    setToken(localStorage?.getItem("token"));
+  }, [initialUserRole]);
+
   // Fetch instructors if admin
   useEffect(() => {
-    if (isOpen && userRole === "admin") {
+    if (isOpen && userRole === "admin" && token) {
       setInstructors([]);
       setSelectedTeacherId(null);
       axios
         .get(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/instructor`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         })
         .then((res) => {
@@ -73,7 +83,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
           toast.error("Failed to fetch instructors.");
         });
     }
-  }, [isOpen, userRole]);
+  }, [isOpen, userRole, token]);
 
   // Clear form when modal opens or teacherId changes
   useEffect(() => {
@@ -107,8 +117,8 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
     setError(null);
 
     try {
-      const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token not found.");
+
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/create`,
         {
