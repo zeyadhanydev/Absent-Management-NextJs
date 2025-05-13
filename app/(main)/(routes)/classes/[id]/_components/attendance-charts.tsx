@@ -218,8 +218,9 @@ export function StudentAttendanceChart({ data }: { data: any[] }) {
           formatter={(value) => [`${value}%`, "Attendance Rate"]}
           labelFormatter={(value) => `Student: ${value}`}
           contentStyle={{
-            backgroundColor: "rgba(255, 255, 255, 0.9)",
+            backgroundColor: "rgba(0, 3, 0, 0.9)",
             borderRadius: "8px",
+            color: "white",
           }}
         />
         <Bar
@@ -318,7 +319,7 @@ export function AttendanceTimelineChart({ data }: { data: any[] }) {
           ]}
           labelFormatter={(value) => `Day ${value}`}
           contentStyle={{
-            backgroundColor: "rgba(255, 255, 255, 0.9)",
+            backgroundColor: "rgba(32, 32, 32, 0.9)", // لوووووووووووون الباكك جراوند بتااع اليووووووم و النسبهههههه
             borderRadius: "8px",
           }}
         />
@@ -371,32 +372,30 @@ export function SectionAttendanceHeatmap({ data }: { data: any[] }) {
             className="flex items-center bg-gray-50 p-2 rounded-md text-sm dark:bg-zinc-800"
           >
             <div className="w-40 truncate pr-2">{student.name}</div>
-            <div className="flex-1 flex items-center gap-1 ">
-              {[...Array(5)].map((_, i) => {
-                const dayData = student.sectionAttendance
-                  .flatMap((s) => s.days)
-                  .find((d) => d.dayNumber === i + 1);
+            <div className="flex-1 flex items-center gap-1">
+              {student.sectionAttendance
+                .flatMap((s) => s.days)
+                .map((dayData, index) => {
+                  const status = dayData?.status || "";
+                  const color =
+                    status === "P"
+                      ? "bg-green-200 dark:bg-green-500/30 text-black dark:text-white font-xl"
+                      : status === "A"
+                        ? "bg-red-200 dark:bg-red-500/30 text-black dark:text-white"
+                        : status === "L"
+                          ? "bg-amber-200 dark:bg-amber-500/30 text-black dark:text-white"
+                          : "bg-gray-200 dark:bg-gray-500/30 text-black dark:text-white";
 
-                const status = dayData?.status || "";
-                const color =
-                  status === "P"
-                    ? "bg-green-200 dark:bg-green-500/30 text-black dark:text-white font-xl"
-                    : status === "A"
-                      ? "bg-red-200 dark:bg-red-500/30 text-black dark:text-white"
-                      : status === "L"
-                        ? "bg-amber-200 dark:bg-amber-500/30 text-black dark:text-white"
-                        : "bg-gray-200 dark:bg-gray-500/30 text-black dark:text-white";
-
-                return (
-                  <div
-                    key={i}
-                    className={`w-8 h-8 ${color} flex items-center justify-center rounded-sm`}
-                    title={`Day ${i + 1}: ${status === "P" ? "Present" : status === "A" ? "Absent" : status === "L" ? "Late" : "No data"}`}
-                  >
-                    {status || "-"}
-                  </div>
-                );
-              })}
+                  return (
+                    <div
+                      key={index}
+                      className={`w-8 h-8 ${color} flex items-center justify-center rounded-sm`}
+                      title={`Day ${dayData.dayNumber}: ${status === "P" ? "Present" : status === "A" ? "Absent" : status === "L" ? "Late" : "No data"}`}
+                    >
+                      {status || "-"}
+                    </div>
+                  );
+                })}
             </div>
             <div className="w-16 text-right font-medium">
               {student.attendancePercentage}%

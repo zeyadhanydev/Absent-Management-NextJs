@@ -507,7 +507,7 @@ export default function Navigation() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="/avatar.png" alt="User" />
+                {/* <AvatarImage src="/avatar.png" alt="User" /> */}
                 <AvatarFallback>
                   {userData?.name ? (
                     userData.name.charAt(0).toUpperCase()

@@ -145,12 +145,13 @@ export default function Login() {
                   <Label htmlFor="password" className="text-sm font-medium">
                     Password
                   </Label>
-                  <Link
-                    href="/forgot-password"
+                  {/* <Link
+                    href="/comming-soon"
                     className="text-xs text-primary hover:text-primary/90 underline-offset-4 hover:underline"
                   >
                     Forgot password?
-                  </Link>
+                  </Link> */} 
+                  {/* تبا لك يا زياد */}
                 </div>
                 <Input
                   id="password"
@@ -183,7 +184,7 @@ export default function Login() {
                 )}
               </Button>
 
-              <p className="text-sm text-center text-muted-foreground">
+              {/* <p className="text-sm text-center text-muted-foreground">
                 Don&apos;t have an account?{" "}
                 <Link
                   href="/register"
@@ -191,7 +192,8 @@ export default function Login() {
                 >
                   Register
                 </Link>
-              </p>
+              </p> */}
+              {/* تبا لك يا زوز */}
             </CardFooter>
           </form>
         </Card>

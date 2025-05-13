@@ -8,19 +8,32 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  // DialogTrigger, // Trigger will be handled in the parent page
-  DialogClose, // Import DialogClose
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/spinner"; // Assuming spinner path
+import { Spinner } from "@/components/spinner";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface Instructor {
+  id: string;
+  name: string;
+  email: string;
+}
 
 interface CreateClassModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onClassCreated: () => void; // Callback to refresh classes list
-  teacherId: string | null; // Pass the fetched teacher ID
+  onClassCreated: () => void;
+  teacherId: string | null; // For instructor
+  userRole: "admin" | "instructor";
 }
 
 export const CreateClassModal: React.FC<CreateClassModalProps> = ({
@@ -33,6 +46,34 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
   const [semester, setSemester] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState(localStorage.getItem("role"));
+
+  // For admin: instructor select
+  const [instructors, setInstructors] = useState<Instructor[]>([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(
+    null,
+  );
+
+  // Fetch instructors if admin
+  useEffect(() => {
+    if (isOpen && userRole === "admin") {
+      setInstructors([]);
+      setSelectedTeacherId(null);
+      axios
+        .get(`${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/auth/instructor`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        })
+        .then((res) => {
+          console.log(res.data.data);
+          setInstructors(res.data.data || []);
+        })
+        .catch(() => {
+          toast.error("Failed to fetch instructors.");
+        });
+    }
+  }, [isOpen, userRole]);
 
   // Clear form when modal opens or teacherId changes
   useEffect(() => {
@@ -40,15 +81,24 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
       setName("");
       setSemester("");
       setError(null);
+      if (userRole === "admin") setSelectedTeacherId(null);
     }
-  }, [isOpen]);
+  }, [isOpen, userRole]);
 
   const handleCreate = async () => {
     if (!name || !semester) {
       setError("Please fill in both class name and semester.");
       return;
     }
-    if (!teacherId) {
+    let finalTeacherId = teacherId;
+    if (userRole === "admin") {
+      if (!selectedTeacherId) {
+        setError("Please select an instructor.");
+        return;
+      }
+      finalTeacherId = selectedTeacherId;
+    }
+    if (!finalTeacherId) {
       setError("Could not verify teacher identity. Please try reloading.");
       return;
     }
@@ -58,15 +108,13 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
 
     try {
       const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("Authentication token not found.");
-      }
+      if (!token) throw new Error("Authentication token not found.");
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_NETWORK_HOST}/api/class/create`,
         {
           name,
           semester,
-          teacherId, // Use the ID passed via props
+          teacherId: finalTeacherId,
         },
         {
           headers: {
@@ -77,10 +125,9 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
       );
 
       if (response.status === 201 || response.status === 200) {
-        // Handle 201 Created or 200 OK
         toast.success(`Class "${name}" created successfully!`);
-        onClassCreated(); // Trigger class list refresh in parent
-        onOpenChange(false); // Close the modal
+        onClassCreated();
+        onOpenChange(false);
       } else {
         throw new Error(
           response.data?.message ||
@@ -88,7 +135,6 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
         );
       }
     } catch (err: any) {
-      // console.error("Failed to create class:", err);
       let errorMessage = "Failed to create class. Please try again later.";
       if (axios.isAxiosError(err) && err.response) {
         errorMessage =
@@ -103,7 +149,6 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
     }
   };
 
-  // Form submission handler to create class on Enter key press
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleCreate();
@@ -111,7 +156,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] max-w-[95vw] w-full">
+      <DialogContent className="sm:max-w-[500px] max-w-[95vw] w-full">
         <DialogHeader>
           <DialogTitle>Create New Class</DialogTitle>
           <DialogDescription>
@@ -119,6 +164,31 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          {userRole === "admin" && (
+            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+              <Label htmlFor="teacher" className="text-left sm:text-right">
+                Instructor
+              </Label>
+              <div className="col-span-1 sm:col-span-3">
+                <Select
+                  disabled={isLoading}
+                  value={selectedTeacherId || ""}
+                  onValueChange={(value) => setSelectedTeacherId(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an instructor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {instructors.map((inst) => (
+                      <SelectItem key={inst._id} value={inst._id}>
+                        {inst.name} ({inst.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
             <Label htmlFor="name" className="text-left sm:text-right">
               Name
@@ -158,7 +228,6 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({
           )}
         </form>
         <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-          {/* Use DialogClose for the Cancel button */}
           <DialogClose asChild>
             <Button
               type="button"

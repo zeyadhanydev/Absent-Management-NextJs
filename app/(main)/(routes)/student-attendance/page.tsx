@@ -279,7 +279,7 @@ const AttendanceDashboard: React.FC = () => {
       (r) => r.status === "late",
     ).length;
 
-    const attendanceRate = total > 0 ? (presentCount / total) * 100 : 0;
+const attendanceRate = total > 0 ? ((presentCount + lateCount) / total) * 100 : 0; //متفتكس تاني و متشغلش دماغك يعم زياااااااااد و تبا لك
 
     return {
       total,
